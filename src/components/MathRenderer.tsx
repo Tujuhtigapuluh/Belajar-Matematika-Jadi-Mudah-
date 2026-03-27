@@ -1,5 +1,5 @@
 // ==========================================
-// 🎨 LATEX-LIKE MATH RENDERER
+// 🎨 LATEX-LIKE MATH RENDERER - IMPROVED
 // ==========================================
 
 import React from 'react';
@@ -42,6 +42,23 @@ function parseMathLatex(latex: string): React.ReactNode[] {
 
   while (i < latex.length) {
     // Check for special patterns
+
+    // 0. Handle \text{} command
+    if (latex.slice(i).startsWith('\\text{')) {
+      const { node, endIndex } = parseTextCommand(latex, i, getKey);
+      elements.push(node);
+      i = endIndex;
+      continue;
+    }
+
+    // 0.5 Handle \quad command (spacing)
+    if (latex.slice(i).startsWith('\\quad')) {
+      elements.push(
+        <span key={getKey()} className="mx-4">&nbsp;</span>
+      );
+      i += 5;
+      continue;
+    }
 
     // 1. Fraction: frac{numerator}{denominator}
     if (latex.slice(i).startsWith('frac{')) {
@@ -88,7 +105,7 @@ function parseMathLatex(latex: string): React.ReactNode[] {
     }
 
     // 5. Special symbols
-    const symbolMatch = latex.slice(i).match(/^(π|∞|±|≠|≤|≥|→|←|↔|∈|∉|⊂|⊃|∪|∩|∅|ℝ|ℤ|ℕ|ℚ|α|β|γ|δ|θ|λ|μ|σ|φ|ω|Σ|Π|∫|∂|∇|√)/);
+    const symbolMatch = latex.slice(i).match(/^(π|∞|±|≠|≤|≥|→|←|↔|∈|∉|⊂|⊃|∪|∩|∅|ℝ|ℤ|ℕ|ℚ|α|β|γ|δ|θ|λ|μ|σ|φ|ω|Σ|Π|∫|∂|∇|√|✓)/);
     if (symbolMatch) {
       elements.push(
         <span key={getKey()} className="mx-0.5 text-purple-300">
@@ -110,7 +127,7 @@ function parseMathLatex(latex: string): React.ReactNode[] {
       continue;
     }
 
-    // 7. Check for function names (sin, cos, tan, log, ln, sqrt) - TAMBAHAN: sqrt
+    // 7. Check for function names (sin, cos, tan, log, ln, sqrt)
     const funcMatch = latex.slice(i).match(/^(sin|cos|tan|log|ln|exp|abs|sqrt)\(/);
     if (funcMatch) {
       const funcName = funcMatch[1];
@@ -123,7 +140,7 @@ function parseMathLatex(latex: string): React.ReactNode[] {
       continue;
     }
 
-    // 8. Numbers
+    // 8. Numbers (including decimals)
     const numMatch = latex.slice(i).match(/^-?\d+\.?\d*/);
     if (numMatch) {
       elements.push(
@@ -146,7 +163,7 @@ function parseMathLatex(latex: string): React.ReactNode[] {
       continue;
     }
 
-        // 10. Parentheses with styling
+    // 10. Parentheses with styling
     if (latex[i] === '(' || latex[i] === ')') {
       elements.push(
         <span key={getKey()} className="text-gray-300 font-light">
@@ -164,15 +181,14 @@ function parseMathLatex(latex: string): React.ReactNode[] {
       continue;
     }
 
-    // 12. Checkmark and special marks
-    if (latex[i] === '✓' || latex[i] === '✗') {
-      elements.push(
-        <span key={getKey()} className={latex[i] === '✓' ? 'text-green-400' : 'text-red-400'}>
-          {latex[i]}
-        </span>
-      );
-      i++;
-      continue;
+    // 12. Backslash commands (generic)
+    if (latex[i] === '\\') {
+      // Skip unknown commands
+      const cmdMatch = latex.slice(i).match(/^\\[a-zA-Z]+/);
+      if (cmdMatch) {
+        i += cmdMatch[0].length;
+        continue;
+      }
     }
 
     // Default: just render the character
@@ -181,6 +197,25 @@ function parseMathLatex(latex: string): React.ReactNode[] {
   }
 
   return elements;
+}
+
+// Parse \text{} command
+function parseTextCommand(
+  latex: string,
+  startIndex: number,
+  getKey: () => string
+): { node: React.ReactNode; endIndex: number } {
+  let i = startIndex + 6; // Skip '\text{'
+  
+  const { content, endIndex } = extractBraces(latex, i);
+
+  const node = (
+    <span key={getKey()} className="text-gray-300 font-normal mx-1">
+      {content}
+    </span>
+  );
+
+  return { node, endIndex };
 }
 
 // Parse fraction: frac{num}{denom}
@@ -275,7 +310,8 @@ function extractBraces(latex: string, startIndex: number): { content: string; en
 // Recursively render content
 function renderContent(content: string, getKey: () => string): React.ReactNode {
   if (content.includes('frac{') || content.includes('sqrt{') || 
-      content.includes('sup{') || content.includes('sub{')) {
+      content.includes('sup{') || content.includes('sub{') ||
+      content.includes('\\text{') || content.includes('\\quad')) {
     return <>{parseMathLatex(content)}</>;
   }
   
