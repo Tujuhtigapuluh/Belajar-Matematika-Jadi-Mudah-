@@ -262,21 +262,19 @@ export class Parser {
       left = { type: 'BinaryOp', operator, left, right };
     }
 
-    // Implicit multiplication: 2x, xy, 2(3+4)
-    while (
-      (this.current().type === 'NUMBER' || 
-       this.current().type === 'VARIABLE' || 
-       this.current().type === 'FUNCTION' ||
-       this.current().type === 'LPAREN') &&
-      this.tokens[this.pos - 1]?.type !== 'OPERATOR'
-    ) {
-      const prevToken = this.tokens[this.pos - 1];
-      if (prevToken?.type === 'NUMBER' || prevToken?.type === 'VARIABLE' || prevToken?.type === 'RPAREN') {
-        const right = this.parsePower();
-        left = { type: 'BinaryOp', operator: '*', left, right };
-      } else {
-        break;
-      }
+    // Implicit multiplication: 2x, xy, 2(3+4), x(y), (x)(y)
+    const canImplicitMultiply = (prev: Token | undefined, curr: Token): boolean => {
+      if (!prev) return false;
+      
+      const prevTypes = ['NUMBER', 'VARIABLE', 'RPAREN'];
+      const currTypes = ['NUMBER', 'VARIABLE', 'FUNCTION', 'LPAREN'];
+      
+      return prevTypes.includes(prev.type) && currTypes.includes(curr.type);
+    };
+
+    while (canImplicitMultiply(this.tokens[this.pos - 1], this.current())) {
+      const right = this.parsePower();
+      left = { type: 'BinaryOp', operator: '*', left, right };
     }
 
     return left;
@@ -354,9 +352,12 @@ export class Parser {
         this.consume('RPAREN');
         return { type: 'Function', name, args };
       } else {
-        // sqrt16 without parentheses
-        const arg = this.parsePrimary();
-        return { type: 'Function', name, args: [arg] };
+        // sqrt16 without parentheses - hanya ambil 1 token untuk menghindari ambiguity
+        if (this.current().type === 'NUMBER' || this.current().type === 'VARIABLE') {
+          const arg = this.parsePrimary();
+          return { type: 'Function', name, args: [arg] };
+        }
+        throw new Error(`Gunakan kurung untuk fungsi ${name}, contoh: ${name}(x)`);
       }
     }
 
@@ -588,7 +589,24 @@ export class SymbolicSolver {
       return this.evaluateArithmetic(input, ast, inputLatex);
 
     } catch (error) {
-      return this.errorResult(input, (error as Error).message);
+      const errorMsg = (error as Error).message;
+      // Handle division by zero dengan UX yang lebih baik
+      if (errorMsg.includes('nol') || errorMsg.includes('zero')) {
+        return {
+          success: false,
+          input,
+          latex: input,
+          error: 'Pembagian dengan nol tidak terdefinisi',
+          steps: [{
+            description: 'Error',
+            latex: '\\text{Pembagian dengan nol}',
+            explanation: 'Tidak bisa membagi dengan nol'
+          }],
+          notes: ['❌ Tidak bisa membagi dengan nol dalam matematika'],
+          type: 'error'
+        };
+      }
+      return this.errorResult(input, errorMsg);
     }
   }
 
@@ -901,7 +919,7 @@ export class SymbolicSolver {
         this.collectTerms(node.left!, variable, coeffs, sign);
         this.collectTerms(node.right!, variable, coeffs, -sign);
       } else if (node.operator === '*') {
-        // ax
+        // ax atau ax^n
         if (node.left!.type === 'Number' && node.right!.type === 'Variable') {
           if (node.right!.value === variable) {
             coeffs[1] = (coeffs[1] || 0) + sign * (node.left!.value as number);
@@ -910,6 +928,16 @@ export class SymbolicSolver {
           if (node.left!.value === variable) {
             coeffs[1] = (coeffs[1] || 0) + sign * (node.right!.value as number);
           }
+        } else if (
+          node.left!.type === 'Number' &&
+          node.right!.type === 'BinaryOp' &&
+          node.right!.operator === '^' &&
+          node.right!.left!.type === 'Variable' &&
+          node.right!.left!.value === variable
+        ) {
+          // Handle 2x^2
+          const power = node.right!.right!.value as number;
+          coeffs[power] = (coeffs[power] || 0) + sign * (node.left!.value as number);
         }
       } else if (node.operator === '^') {
         // x^2

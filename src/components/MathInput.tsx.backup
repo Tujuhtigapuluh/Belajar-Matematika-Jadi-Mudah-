@@ -341,10 +341,18 @@ export const MathInput: React.FC<MathInputProps> = ({
 
 function sanitizeInput(input: string): string {
   // Remove dangerous characters, keep math-safe ones
-  return input
+  let sanitized = input
     .replace(/[<>{}[\]\\`'"]/g, '') // Remove potentially dangerous chars
     .replace(/\s+/g, ' ') // Normalize whitespace
     .slice(0, 200); // Limit length
+  
+  // Prevent duplicate operators like 2++3, 2--3, 2**3, etc
+  sanitized = sanitized
+    .replace(/([+\-*/^]){2,}/g, '$1') // Replace multiple same operators with single
+    .replace(/\+-/g, '-') // Replace +- with -
+    .replace(/-\+/g, '-'); // Replace -+ with -
+  
+  return sanitized;
 }
 
 function sanitizeNumber(input: string): string {

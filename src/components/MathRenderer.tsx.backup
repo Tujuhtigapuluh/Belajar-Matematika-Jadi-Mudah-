@@ -110,8 +110,8 @@ function parseMathLatex(latex: string): React.ReactNode[] {
       continue;
     }
 
-    // 7. Check for function names (sin, cos, tan, log, ln)
-    const funcMatch = latex.slice(i).match(/^(sin|cos|tan|log|ln|exp|abs)\(/);
+    // 7. Check for function names (sin, cos, tan, log, ln, sqrt)
+    const funcMatch = latex.slice(i).match(/^(sin|cos|tan|log|ln|exp|abs|sqrt)\(/);
     if (funcMatch) {
       const funcName = funcMatch[1];
       i += funcName.length;
