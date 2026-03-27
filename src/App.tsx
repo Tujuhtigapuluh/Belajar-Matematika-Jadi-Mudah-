@@ -158,7 +158,7 @@ export default function App() {
       <header className="sticky top-0 z-30 bg-slate-900/80 backdrop-blur-xl border-b border-white/10">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
           <h1 className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent flex items-center gap-2">
-            🧮 MathGenius PRO
+            👩‍🏫 Belajar Matematika Jadi Mudah
           </h1>
 
           <div className="flex items-center gap-2">
@@ -257,9 +257,9 @@ const CalculatorMode: React.FC<CalculatorModeProps> = ({
       {/* Welcome Message */}
       <div className="text-center py-4">
         <div className="inline-flex items-center gap-3 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-2xl px-6 py-3 border border-purple-500/30">
-          <span className="text-3xl">🤖</span>
+          <span className="text-3xl">👨🏽‍🏫</span>
           <div className="text-left">
-            <p className="text-white font-medium">Halo! Saya MathGenius</p>
+            <p className="text-white font-medium">Halo! ada yang bisa saya bantu</p>
             <p className="text-sm text-gray-400">Tulis soal matematikamu di bawah ini</p>
           </div>
         </div>
