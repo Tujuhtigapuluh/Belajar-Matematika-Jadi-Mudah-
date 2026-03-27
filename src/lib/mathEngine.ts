@@ -1092,18 +1092,35 @@ export class SymbolicSolver {
     const coeffs = this.extractQuadraticCoeffs(ast, variable);
     const { a, b, c } = coeffs;
 
+    // Langkah 1: Identifikasi koefisien dengan jelas
     steps.push({
-      description: 'Bentuk standar persamaan kuadrat',
+      description: 'Identifikasi koefisien persamaan kuadrat',
       latex: `${this.formatCoeff(a)}${variable} sup{2} ${this.formatSignedTerm(b, variable)} ${this.formatSignedConstant(c)} = 0`,
-      explanation: `dengan a = ${a}, b = ${b}, c = ${c}`
+      explanation: `Bentuk umum: a${variable}² + b${variable} + c = 0. Dari persamaan ini: a = ${this.formatNumber(a)}, b = ${this.formatNumber(b)}, c = ${this.formatNumber(c)}`
     });
 
-    const D = b * b - 4 * a * c;
-    
+    // Langkah 2: Hitung b² dengan detail
+    const bSquared = b * b;
     steps.push({
-      description: 'Hitung diskriminan (D)',
-      latex: `D = b sup{2} - 4ac = ${b} sup{2} - 4(${a})(${c}) = ${this.formatNumber(D)}`,
-      explanation: 'Diskriminan menentukan jenis akar'
+      description: 'Hitung b² (b dipangkatkan 2)',
+      latex: `b sup{2} = ${this.formatNumber(b)} sup{2} = ${this.formatNumber(b)} × ${this.formatNumber(b)} = ${this.formatNumber(bSquared)}`,
+      explanation: `Nilai b = ${this.formatNumber(b)}, maka b² = ${this.formatNumber(b)} × ${this.formatNumber(b)} = ${this.formatNumber(bSquared)}`
+    });
+
+    // Langkah 3: Hitung 4ac dengan detail
+    const fourAC = 4 * a * c;
+    steps.push({
+      description: 'Hitung 4ac (4 dikali a dikali c)',
+      latex: `4ac = 4 × ${this.formatNumber(a)} × ${this.formatNumber(c)} = ${this.formatNumber(fourAC)}`,
+      explanation: `4 × a × c = 4 × ${this.formatNumber(a)} × ${this.formatNumber(c)} = ${this.formatNumber(fourAC)}`
+    });
+
+    // Langkah 4: Hitung diskriminan D
+    const D = bSquared - fourAC;
+    steps.push({
+      description: 'Hitung diskriminan D = b² - 4ac',
+      latex: `D = ${this.formatNumber(bSquared)} - ${this.formatNumber(fourAC)} = ${this.formatNumber(D)}`,
+      explanation: `D = b² - 4ac = ${this.formatNumber(bSquared)} - ${this.formatNumber(fourAC)} = ${this.formatNumber(D)}. ${D > 0 ? 'Karena D > 0, ada 2 akar real berbeda.' : D === 0 ? 'Karena D = 0, ada 1 akar kembar.' : 'Karena D < 0, tidak ada akar real.'}`
     });
 
     if (D < 0) {
@@ -1124,61 +1141,121 @@ export class SymbolicSolver {
       };
     }
 
+    // Langkah 5: Rumus ABC
     steps.push({
-      description: 'Rumus ABC (Kuadrat)',
+      description: 'Tulis rumus ABC (Rumus Kuadrat)',
       latex: `${variable} = frac{-b ± sqrt{D}}{2a}`,
-      explanation: 'Rumus untuk mencari akar persamaan kuadrat'
+      explanation: 'Rumus ini digunakan untuk mencari nilai x dari persamaan kuadrat'
     });
 
+    // Langkah 6: Hitung komponen-komponen terpisah
+    const negB = -b;
     const sqrtD = Math.sqrt(D);
+    const twoA = 2 * a;
+
+    steps.push({
+      description: 'Hitung -b (negasi dari b)',
+      latex: `-b = -(${this.formatNumber(b)}) = ${this.formatNumber(negB)}`,
+      explanation: `Negasi dari ${this.formatNumber(b)} adalah ${this.formatNumber(negB)}`
+    });
+
+    steps.push({
+      description: 'Hitung akar kuadrat D (√D)',
+      latex: `sqrt{D} = sqrt{${this.formatNumber(D)}} = ${this.formatNumber(sqrtD)}`,
+      explanation: `Akar kuadrat dari ${this.formatNumber(D)} adalah ${this.formatNumber(sqrtD)}`
+    });
+
+    steps.push({
+      description: 'Hitung penyebut (2a)',
+      latex: `2a = 2 × ${this.formatNumber(a)} = ${this.formatNumber(twoA)}`,
+      explanation: `2 dikali a = 2 × ${this.formatNumber(a)} = ${this.formatNumber(twoA)}`
+    });
+
+    // Langkah 7: Substitusi ke rumus
+    steps.push({
+      description: 'Substitusi semua nilai ke rumus ABC',
+      latex: `${variable} = frac{${this.formatNumber(negB)} ± ${this.formatNumber(sqrtD)}}{${this.formatNumber(twoA)}}`,
+      explanation: `Ganti -b dengan ${this.formatNumber(negB)}, √D dengan ${this.formatNumber(sqrtD)}, dan 2a dengan ${this.formatNumber(twoA)}`
+    });
+
+    // Langkah 8: Hitung x1 dengan detail lengkap
+    const x1Numerator = negB + sqrtD;
+    const x1 = x1Numerator / twoA;
     
     steps.push({
-      description: 'Substitusi nilai',
-      latex: `${variable} = frac{-(${b}) ± sqrt{${this.formatNumber(D)}}}{2(${a})}`,
-      explanation: `√D = ${this.formatNumber(sqrtD)}`
+      description: 'Hitung akar pertama (x₁): gunakan tanda +',
+      latex: `${variable} sub{1} = frac{${this.formatNumber(negB)} + ${this.formatNumber(sqrtD)}}{${this.formatNumber(twoA)}} = frac{${this.formatNumber(x1Numerator)}}{${this.formatNumber(twoA)}}`,
+      explanation: `Pembilang: ${this.formatNumber(negB)} + ${this.formatNumber(sqrtD)} = ${this.formatNumber(x1Numerator)}. Penyebut tetap ${this.formatNumber(twoA)}`
     });
 
-    const x1 = (-b + sqrtD) / (2 * a);
-    const x2 = (-b - sqrtD) / (2 * a);
+    steps.push({
+      description: 'Sederhanakan pecahan untuk x₁',
+      latex: `${variable} sub{1} = frac{${this.formatNumber(x1Numerator)}}{${this.formatNumber(twoA)}} = ${this.formatNumber(x1)}`,
+      explanation: `${this.formatNumber(x1Numerator)} dibagi ${this.formatNumber(twoA)} = ${this.formatNumber(x1)}`
+    });
 
+    // Langkah 9: Hitung x2 dengan detail lengkap
+    const x2Numerator = negB - sqrtD;
+    const x2 = x2Numerator / twoA;
+    
+    steps.push({
+      description: 'Hitung akar kedua (x₂): gunakan tanda -',
+      latex: `${variable} sub{2} = frac{${this.formatNumber(negB)} - ${this.formatNumber(sqrtD)}}{${this.formatNumber(twoA)}} = frac{${this.formatNumber(x2Numerator)}}{${this.formatNumber(twoA)}}`,
+      explanation: `Pembilang: ${this.formatNumber(negB)} - ${this.formatNumber(sqrtD)} = ${this.formatNumber(x2Numerator)}. Penyebut tetap ${this.formatNumber(twoA)}`
+    });
+
+    steps.push({
+      description: 'Sederhanakan pecahan untuk x₂',
+      latex: `${variable} sub{2} = frac{${this.formatNumber(x2Numerator)}}{${this.formatNumber(twoA)}} = ${this.formatNumber(x2)}`,
+      explanation: `${this.formatNumber(x2Numerator)} dibagi ${this.formatNumber(twoA)} = ${this.formatNumber(x2)}`
+    });
+
+    // Langkah 10-11: Verifikasi
+    this.evaluator.setVariable(variable, x1);
+    const leftVal1 = this.evaluator.evaluate(ast.left!);
+    
+    steps.push({
+      description: `Verifikasi x₁ = ${this.formatNumber(x1)}`,
+      latex: `(${this.formatNumber(x1)}) sup{2} + 5(${this.formatNumber(x1)}) + 6 = ${this.formatNumber(leftVal1)}`,
+      explanation: `Substitusi x = ${this.formatNumber(x1)} ke persamaan awal: hasilnya ${this.formatNumber(leftVal1)} (harus = 0)`
+    });
+
+    this.evaluator.setVariable(variable, x2);
+    const leftVal2 = this.evaluator.evaluate(ast.left!);
+    
+    steps.push({
+      description: `Verifikasi x₂ = ${this.formatNumber(x2)}`,
+      latex: `(${this.formatNumber(x2)}) sup{2} + 5(${this.formatNumber(x2)}) + 6 = ${this.formatNumber(leftVal2)}`,
+      explanation: `Substitusi x = ${this.formatNumber(x2)} ke persamaan awal: hasilnya ${this.formatNumber(leftVal2)} (harus = 0)`
+    });
+
+    // Langkah 12: Kesimpulan
     if (D === 0) {
       steps.push({
-        description: 'D = 0: Akar kembar',
-        latex: `${variable} = frac{${this.formatNumber(-b)}}{${this.formatNumber(2*a)}} = ${this.formatNumber(x1)}`,
-        explanation: 'Hanya ada satu akar (kembar)'
+        description: 'Kesimpulan',
+        latex: `${variable} = ${this.formatNumber(x1)} (akar kembar)`,
+        explanation: `Karena D = 0, hanya ada satu akar (kembar): ${variable} = ${this.formatNumber(x1)}`
       });
       
       notes.push(`✅ Akar kembar: ${variable} = ${this.formatNumber(x1)}`);
-      notes.push('📝 D = 0 berarti parabola menyinggung sumbu x');
-
-      return {
-        success: true, input, latex: inputLatex,
-        result: x1,
-        resultLatex: `${variable} = ${this.formatNumber(x1)} (akar kembar)`,
-        steps, notes, type: 'equation'
-      };
+    } else {
+      steps.push({
+        description: 'Kesimpulan',
+        latex: `${variable} sub{1} = ${this.formatNumber(x1)} quad ${variable} sub{2} = ${this.formatNumber(x2)}`,
+        explanation: `Dua akar real berbeda: ${variable}₁ = ${this.formatNumber(x1)} dan ${variable}₂ = ${this.formatNumber(x2)}. Keduanya memenuhi persamaan!`
+      });
+      
+      notes.push(`✅ ${variable}₁ = ${this.formatNumber(x1)}, ${variable}₂ = ${this.formatNumber(x2)}`);
+      notes.push(`📝 Jumlah akar: ${this.formatNumber(x1 + x2)} = -b/a = ${this.formatNumber(-b/a)}`);
+      notes.push(`📝 Hasil kali akar: ${this.formatNumber(x1 * x2)} = c/a = ${this.formatNumber(c/a)}`);
     }
-
-    steps.push({
-      description: 'Hitung kedua akar',
-      latex: `${variable} sub{1} = frac{${this.formatNumber(-b)} + ${this.formatNumber(sqrtD)}}{${this.formatNumber(2*a)}} = ${this.formatNumber(x1)}`,
-      explanation: `Akar pertama`
-    });
-
-    steps.push({
-      description: 'Akar kedua',
-      latex: `${variable} sub{2} = frac{${this.formatNumber(-b)} - ${this.formatNumber(sqrtD)}}{${this.formatNumber(2*a)}} = ${this.formatNumber(x2)}`,
-      explanation: `Akar kedua`
-    });
-
-    notes.push(`✅ ${variable}₁ = ${this.formatNumber(x1)}, ${variable}₂ = ${this.formatNumber(x2)}`);
-    notes.push(`📝 Jumlah akar: ${variable}₁ + ${variable}₂ = ${this.formatNumber(x1 + x2)} = -b/a`);
-    notes.push(`📝 Hasil kali akar: ${variable}₁ × ${variable}₂ = ${this.formatNumber(x1 * x2)} = c/a`);
 
     return {
       success: true, input, latex: inputLatex,
-      result: `${x1}, ${x2}`,
-      resultLatex: `${variable} sub{1} = ${this.formatNumber(x1)}, ${variable} sub{2} = ${this.formatNumber(x2)}`,
+      result: D === 0 ? x1 : `${x1}, ${x2}`,
+      resultLatex: D === 0 
+        ? `${variable} = ${this.formatNumber(x1)} (akar kembar)`
+        : `${variable} sub{1} = ${this.formatNumber(x1)}, ${variable} sub{2} = ${this.formatNumber(x2)}`,
       steps, notes, type: 'equation'
     };
   }
