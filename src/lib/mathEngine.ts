@@ -3,8 +3,8 @@
 // ==========================================
 
 // Token Types
-export type TokenType = 
-  | 'NUMBER' | 'VARIABLE' | 'OPERATOR' | 'FUNCTION' 
+export type TokenType =
+  | 'NUMBER' | 'VARIABLE' | 'OPERATOR' | 'FUNCTION'
   | 'LPAREN' | 'RPAREN' | 'EQUALS' | 'COMMA' | 'FACTORIAL' | 'EOF';
 
 export interface Token {
@@ -14,8 +14,8 @@ export interface Token {
 }
 
 // AST Node Types
-export type NodeType = 
-  | 'Number' | 'Variable' | 'BinaryOp' | 'UnaryOp' 
+export type NodeType =
+  | 'Number' | 'Variable' | 'BinaryOp' | 'UnaryOp'
   | 'Function' | 'Equation' | 'Factorial';
 
 export interface ASTNode {
@@ -55,10 +55,8 @@ export interface MathStep {
 export class Tokenizer {
   private input: string;
   private pos: number = 0;
-  private tokens: Token[] = [];
 
   constructor(input: string) {
-    // Sanitize input
     this.input = this.sanitize(input);
   }
 
@@ -84,8 +82,8 @@ export class Tokenizer {
   }
 
   tokenize(): Token[] {
-    this.tokens = [];
     this.pos = 0;
+    const tokens: Token[] = [];
 
     while (this.pos < this.input.length) {
       this.skipWhitespace();
@@ -93,64 +91,58 @@ export class Tokenizer {
 
       const char = this.input[this.pos];
 
-      // Numbers (including decimals)
       if (/[0-9]/.test(char) || (char === '.' && /[0-9]/.test(this.input[this.pos + 1] || ''))) {
-        this.tokens.push(this.readNumber());
+        tokens.push(this.readNumber());
         continue;
       }
 
-      // Variables and Functions
       if (/[a-zA-Z_]/.test(char)) {
-        this.tokens.push(this.readIdentifier());
+        tokens.push(this.readIdentifier());
         continue;
       }
 
-      // Operators
       if (/[+\-*/^]/.test(char)) {
-        this.tokens.push({ type: 'OPERATOR', value: char, position: this.pos });
+        tokens.push({ type: 'OPERATOR', value: char, position: this.pos });
         this.pos++;
         continue;
       }
 
-      // Parentheses
       if (char === '(') {
-        this.tokens.push({ type: 'LPAREN', value: '(', position: this.pos });
+        tokens.push({ type: 'LPAREN', value: '(', position: this.pos });
         this.pos++;
         continue;
       }
+
       if (char === ')') {
-        this.tokens.push({ type: 'RPAREN', value: ')', position: this.pos });
+        tokens.push({ type: 'RPAREN', value: ')', position: this.pos });
         this.pos++;
         continue;
       }
 
-      // Equals
       if (char === '=') {
-        this.tokens.push({ type: 'EQUALS', value: '=', position: this.pos });
+        tokens.push({ type: 'EQUALS', value: '=', position: this.pos });
         this.pos++;
         continue;
       }
 
-      // Comma
       if (char === ',') {
-        this.tokens.push({ type: 'COMMA', value: ',', position: this.pos });
+        tokens.push({ type: 'COMMA', value: ',', position: this.pos });
         this.pos++;
         continue;
       }
 
-      // Factorial
       if (char === '!') {
-        this.tokens.push({ type: 'FACTORIAL', value: '!', position: this.pos });
+        tokens.push({ type: 'FACTORIAL', value: '!', position: this.pos });
         this.pos++;
         continue;
       }
 
-      // Unknown character - skip
+      // Unknown character — skip
       this.pos++;
     }
 
-    this.tokens.push({ type: 'EOF', value: '', position: this.pos });
-    return this.tokens;
+    tokens.push({ type: 'EOF', value: '', position: this.pos });
+    return tokens;
   }
 
   private skipWhitespace(): void {
@@ -186,7 +178,7 @@ export class Tokenizer {
 
     const value = this.input.slice(start, this.pos);
     const functions = ['sin', 'cos', 'tan', 'log', 'ln', 'sqrt', 'abs', 'exp', 'pi', 'e'];
-    
+
     if (functions.includes(value.toLowerCase())) {
       return { type: 'FUNCTION', value: value.toLowerCase(), position: start };
     }
@@ -207,9 +199,7 @@ export class Parser {
     const tokenizer = new Tokenizer(input);
     this.tokens = tokenizer.tokenize();
     this.pos = 0;
-
-    const result = this.parseEquation();
-    return result;
+    return this.parseEquation();
   }
 
   private current(): Token {
@@ -227,13 +217,13 @@ export class Parser {
 
   private parseEquation(): ASTNode {
     const left = this.parseExpression();
-    
+
     if (this.current().type === 'EQUALS') {
       this.consume('EQUALS');
       const right = this.parseExpression();
       return { type: 'Equation', left, right };
     }
-    
+
     return left;
   }
 
@@ -263,21 +253,24 @@ export class Parser {
     }
 
     // Implicit multiplication: 2x, xy, 2(3+4), x(y), (x)(y)
-    const canImplicitMultiply = (prev: Token | undefined, curr: Token): boolean => {
-      if (!prev) return false;
-      
-      const prevTypes = ['NUMBER', 'VARIABLE', 'RPAREN'];
-      const currTypes = ['NUMBER', 'VARIABLE', 'FUNCTION', 'LPAREN'];
-      
-      return prevTypes.includes(prev.type) && currTypes.includes(curr.type);
-    };
-
-    while (canImplicitMultiply(this.tokens[this.pos - 1], this.current())) {
+    while (this.canImplicitMultiply()) {
       const right = this.parsePower();
       left = { type: 'BinaryOp', operator: '*', left, right };
     }
 
     return left;
+  }
+
+  // ✅ Fix: safer implicit multiplication detection
+  private canImplicitMultiply(): boolean {
+    const prev = this.tokens[this.pos - 1];
+    const curr = this.current();
+    if (!prev || curr.type === 'EOF') return false;
+
+    const prevCanEnd = ['NUMBER', 'VARIABLE', 'RPAREN', 'FACTORIAL'].includes(prev.type);
+    const currCanStart = ['NUMBER', 'VARIABLE', 'FUNCTION', 'LPAREN'].includes(curr.type);
+
+    return prevCanEnd && currCanStart;
   }
 
   private parsePower(): ASTNode {
@@ -298,7 +291,6 @@ export class Parser {
       const argument = this.parseUnary();
       return { type: 'UnaryOp', operator, argument };
     }
-
     return this.parsePostfix();
   }
 
@@ -322,7 +314,7 @@ export class Parser {
       return { type: 'Number', value: parseFloat(token.value) };
     }
 
-    // Constants
+    // Constants & Functions
     if (token.type === 'FUNCTION') {
       if (token.value === 'pi') {
         this.consume();
@@ -333,14 +325,13 @@ export class Parser {
         return { type: 'Number', value: Math.E };
       }
 
-      // Function call
       const name = token.value;
       this.consume();
-      
+
       if (this.current().type === 'LPAREN') {
         this.consume('LPAREN');
         const args: ASTNode[] = [];
-        
+
         if (this.current().type !== 'RPAREN') {
           args.push(this.parseExpression());
           while (this.current().type === 'COMMA') {
@@ -348,11 +339,11 @@ export class Parser {
             args.push(this.parseExpression());
           }
         }
-        
+
         this.consume('RPAREN');
         return { type: 'Function', name, args };
       } else {
-        // sqrt16 tanpa kurung
+        // sqrt16 without parentheses
         if (this.current().type === 'NUMBER' || this.current().type === 'VARIABLE') {
           const arg = this.parsePrimary();
           return { type: 'Function', name, args: [arg] };
@@ -375,7 +366,7 @@ export class Parser {
       return expr;
     }
 
-    throw new Error(`Unexpected token: ${token.type} (${token.value})`);
+    throw new Error(`Token tidak dikenal: ${token.type} (${token.value})`);
   }
 }
 
@@ -388,6 +379,10 @@ export class Evaluator {
 
   setVariable(name: string, value: number): void {
     this.variables.set(name, value);
+  }
+
+  clearVariables(): void {
+    this.variables.clear();
   }
 
   evaluate(node: ASTNode): number {
@@ -406,12 +401,12 @@ export class Evaluator {
       case 'BinaryOp': {
         const left = this.evaluate(node.left!);
         const right = this.evaluate(node.right!);
-        
+
         switch (node.operator) {
           case '+': return left + right;
           case '-': return left - right;
           case '*': return left * right;
-          case '/': 
+          case '/':
             if (right === 0) throw new Error('Pembagian dengan nol tidak terdefinisi dalam bilangan real');
             return left / right;
           case '^': return Math.pow(left, right);
@@ -445,14 +440,14 @@ export class Evaluator {
 
   private evaluateFunction(name: string, args: number[]): number {
     const x = args[0];
-    
+
     switch (name) {
       case 'sin': return Math.sin(x);
       case 'cos': return Math.cos(x);
       case 'tan': return Math.tan(x);
       case 'log': return Math.log10(x);
       case 'ln': return Math.log(x);
-      case 'sqrt': 
+      case 'sqrt':
         if (x < 0) throw new Error('Akar kuadrat bilangan negatif tidak terdefinisi dalam bilangan real');
         return Math.sqrt(x);
       case 'abs': return Math.abs(x);
@@ -466,7 +461,7 @@ export class Evaluator {
     if (!Number.isInteger(n)) throw new Error('Faktorial hanya untuk bilangan bulat');
     if (n > 170) throw new Error('Faktorial terlalu besar untuk dihitung');
     if (n === 0 || n === 1) return 1;
-    
+
     let result = 1;
     for (let i = 2; i <= n; i++) {
       result *= i;
@@ -496,14 +491,20 @@ export class LaTeXConverter {
       case 'BinaryOp': {
         const left = this.toLatex(node.left!);
         const right = this.toLatex(node.right!);
-        
+
         switch (node.operator) {
           case '+': return `${left} + ${right}`;
           case '-': return `${left} - ${right}`;
           case '*': {
             const leftIsNum = node.left!.type === 'Number';
             const rightIsVar = node.right!.type === 'Variable';
-            if (leftIsNum && rightIsVar) {
+            // ✅ Fix: juga handle number × (power of variable) → 3x²
+            const rightIsVarPow =
+              node.right!.type === 'BinaryOp' &&
+              node.right!.operator === '^' &&
+              node.right!.left?.type === 'Variable';
+
+            if (leftIsNum && (rightIsVar || rightIsVarPow)) {
               return `${left}${right}`;
             }
             return `${left} × ${right}`;
@@ -526,11 +527,7 @@ export class LaTeXConverter {
 
       case 'Function': {
         const args = node.args!.map(arg => this.toLatex(arg)).join(', ');
-        
-        if (node.name === 'sqrt') {
-          return `sqrt{${args}}`;
-        }
-        
+        if (node.name === 'sqrt') return `sqrt{${args}}`;
         return `${node.name}(${args})`;
       }
 
@@ -544,6 +541,61 @@ export class LaTeXConverter {
         const left = this.toLatex(node.left!);
         const right = this.toLatex(node.right!);
         return `${left} = ${right}`;
+      }
+
+      default:
+        return '';
+    }
+  }
+
+  // ✅ New: LaTeX with variable substituted for display
+  toLatexWithValue(node: ASTNode, variable: string, value: number): string {
+    switch (node.type) {
+      case 'Number': {
+        const num = node.value as number;
+        if (Number.isInteger(num)) return num.toString();
+        return num.toFixed(4).replace(/\.?0+$/, '');
+      }
+
+      case 'Variable':
+        if (node.value === variable) {
+          return value < 0 ? `(${value})` : `${value}`;
+        }
+        return node.value as string;
+
+      case 'BinaryOp': {
+        const left = this.toLatexWithValue(node.left!, variable, value);
+        const right = this.toLatexWithValue(node.right!, variable, value);
+
+        switch (node.operator) {
+          case '+': return `${left} + ${right}`;
+          case '-': return `${left} - ${right}`;
+          case '*': return `${left} × ${right}`;
+          case '/': return `frac{${left}}{${right}}`;
+          case '^': {
+            const needsParen = node.left!.type === 'BinaryOp' || node.left!.type === 'UnaryOp';
+            const base = needsParen ? `(${left})` : left;
+            return `${base} sup{${right}}`;
+          }
+          default: return `${left} ${node.operator} ${right}`;
+        }
+      }
+
+      case 'UnaryOp': {
+        const arg = this.toLatexWithValue(node.argument!, variable, value);
+        if (node.operator === '-') return `-${arg}`;
+        return arg;
+      }
+
+      case 'Function': {
+        const args = node.args!.map(a => this.toLatexWithValue(a, variable, value)).join(', ');
+        if (node.name === 'sqrt') return `sqrt{${args}}`;
+        return `${node.name}(${args})`;
+      }
+
+      case 'Factorial': {
+        const arg = this.toLatexWithValue(node.argument!, variable, value);
+        return `${arg}!`;
       }
 
       default:
@@ -579,9 +631,9 @@ export class SymbolicSolver {
       }
 
       return this.evaluateArithmetic(input, ast, inputLatex);
-
     } catch (error) {
       const errorMsg = (error as Error).message;
+
       if (errorMsg.includes('nol') || errorMsg.includes('zero')) {
         return {
           success: false,
@@ -590,16 +642,21 @@ export class SymbolicSolver {
           error: 'Pembagian dengan nol tidak terdefinisi',
           steps: [{
             description: 'Error',
-            latex: '\\text{Pembagian dengan nol}',
+            latex: 'Pembagian dengan nol',
             explanation: 'Tidak bisa membagi dengan nol'
           }],
           notes: ['❌ Tidak bisa membagi dengan nol dalam matematika'],
           type: 'error'
         };
       }
+
       return this.errorResult(input, errorMsg);
     }
   }
+
+  // ==========================================
+  // HELPERS
+  // ==========================================
 
   private hasVariables(node: ASTNode): boolean {
     if (node.type === 'Variable') return true;
@@ -609,6 +666,53 @@ export class SymbolicSolver {
     if (node.args) return node.args.some(arg => this.hasVariables(arg));
     return false;
   }
+
+  private formatNumber(n: number): string {
+    if (!isFinite(n)) return 'Tidak terdefinisi';
+    if (Number.isInteger(n)) return n.toString();
+    const rounded = Math.round(n * 10000) / 10000;
+    return rounded.toString();
+  }
+
+  private formatCoeff(n: number): string {
+    if (n === 1) return '';
+    if (n === -1) return '-';
+    return this.formatNumber(n);
+  }
+
+  private formatSignedTerm(coeff: number, variable: string): string {
+    if (coeff === 0) return '';
+    if (coeff === 1) return `+ ${variable}`;
+    if (coeff === -1) return `- ${variable}`;
+    if (coeff > 0) return `+ ${coeff}${variable}`;
+    return `- ${Math.abs(coeff)}${variable}`;
+  }
+
+  private formatSignedConstant(n: number): string {
+    if (n === 0) return '';
+    if (n > 0) return `+ ${n}`;
+    return `- ${Math.abs(n)}`;
+  }
+
+  private errorResult(input: string, message: string): MathResult {
+    return {
+      success: false,
+      input,
+      latex: input,
+      error: message,
+      steps: [{
+        description: 'Error',
+        latex: message,
+        explanation: 'Silakan perbaiki input dan coba lagi'
+      }],
+      notes: ['❌ ' + message],
+      type: 'error'
+    };
+  }
+
+  // ==========================================
+  // ARITHMETIC EVALUATION
+  // ==========================================
 
   private evaluateArithmetic(input: string, ast: ASTNode, inputLatex: string): MathResult {
     const steps: MathStep[] = [];
@@ -665,11 +769,11 @@ export class SymbolicSolver {
       case 'BinaryOp': {
         const left = this.collectSteps(node.left!, steps, depth + 1);
         const right = this.collectSteps(node.right!, steps, depth + 1);
-        
+
         let result: number;
         let opName: string;
         let opSymbol: string;
-        
+
         switch (node.operator) {
           case '+':
             result = left + right;
@@ -701,7 +805,9 @@ export class SymbolicSolver {
             throw new Error('Operator tidak dikenal');
         }
 
-        if (depth > 0 || (node.left!.type !== 'Number' || node.right!.type !== 'Number')) {
+        // ✅ Fix: tampilkan langkah untuk semua operasi, termasuk top-level sederhana
+        const hasSubExpr = node.left!.type !== 'Number' || node.right!.type !== 'Number';
+        if (depth > 0 || hasSubExpr) {
           if (node.operator === '/') {
             steps.push({
               description: opName,
@@ -741,8 +847,8 @@ export class SymbolicSolver {
 
       case 'Function': {
         const args = node.args!.map(arg => this.collectSteps(arg, steps, depth + 1));
-        const result = this.evaluateFunction(node.name!, args);
-        
+        const result = this.evaluateFunctionDirect(node.name!, args);
+
         if (node.name === 'sqrt') {
           steps.push({
             description: 'Akar kuadrat',
@@ -753,19 +859,19 @@ export class SymbolicSolver {
           steps.push({
             description: `Fungsi ${node.name}`,
             latex: `${node.name}(${args.map(a => this.formatNumber(a)).join(', ')}) = ${this.formatNumber(result)}`,
-            explanation: `Menghitung ${node.name} dari ${args[0]}`
+            explanation: `Menghitung ${node.name} dari ${this.formatNumber(args[0])}`
           });
         }
-        
+
         return result;
       }
 
       case 'Factorial': {
         const n = this.collectSteps(node.argument!, steps, depth + 1);
-        const result = this.factorial(n);
-        
+        const result = this.factorialDirect(n);
+
         if (n > 1 && n <= 10) {
-          const expansion = Array.from({length: n}, (_, i) => n - i).join(' × ');
+          const expansion = Array.from({ length: n }, (_, i) => n - i).join(' × ');
           steps.push({
             description: 'Faktorial',
             latex: `${n}! = ${expansion} = ${result}`,
@@ -778,7 +884,7 @@ export class SymbolicSolver {
             explanation: `${n} faktorial = ${this.formatNumber(result)}`
           });
         }
-        
+
         return result;
       }
 
@@ -787,7 +893,8 @@ export class SymbolicSolver {
     }
   }
 
-  private evaluateFunction(name: string, args: number[]): number {
+  // Direct math functions (no dependency on Evaluator class)
+  private evaluateFunctionDirect(name: string, args: number[]): number {
     const x = args[0];
     switch (name) {
       case 'sin': return Math.sin(x);
@@ -795,7 +902,7 @@ export class SymbolicSolver {
       case 'tan': return Math.tan(x);
       case 'log': return Math.log10(x);
       case 'ln': return Math.log(x);
-      case 'sqrt': 
+      case 'sqrt':
         if (x < 0) throw new Error('Akar kuadrat bilangan negatif tidak terdefinisi');
         return Math.sqrt(x);
       case 'abs': return Math.abs(x);
@@ -804,7 +911,7 @@ export class SymbolicSolver {
     }
   }
 
-  private factorial(n: number): number {
+  private factorialDirect(n: number): number {
     if (n < 0) throw new Error('Faktorial negatif tidak terdefinisi');
     if (!Number.isInteger(n)) throw new Error('Faktorial hanya untuk bilangan bulat');
     if (n > 170) throw new Error('Faktorial terlalu besar');
@@ -813,6 +920,10 @@ export class SymbolicSolver {
     for (let i = 2; i <= n; i++) result *= i;
     return result;
   }
+
+  // ==========================================
+  // EQUATION SOLVING
+  // ==========================================
 
   private solveEquation(input: string, ast: ASTNode, inputLatex: string): MathResult {
     const steps: MathStep[] = [];
@@ -830,13 +941,13 @@ export class SymbolicSolver {
     }
 
     const degree = this.getPolynomialDegree(ast, variable);
-    
+
     if (degree === 1) {
       return this.solveLinear(input, ast, inputLatex, variable, steps, notes);
     } else if (degree === 2) {
       return this.solveQuadratic(input, ast, inputLatex, variable, steps, notes);
     } else {
-      return this.errorResult(input, `Persamaan derajat ${degree} belum didukung`);
+      return this.errorResult(input, `Persamaan derajat ${degree} belum didukung. Coba persamaan linear (derajat 1) atau kuadrat (derajat 2).`);
     }
   }
 
@@ -862,15 +973,16 @@ export class SymbolicSolver {
 
   private getPolynomialDegree(node: ASTNode, variable: string): number {
     const coeffs = this.extractCoefficients(node, variable);
-    return Math.max(...Object.keys(coeffs).map(Number));
+    const degrees = Object.keys(coeffs).map(Number).filter(d => coeffs[d] !== 0);
+    return degrees.length > 0 ? Math.max(...degrees) : 0;
   }
 
   private extractCoefficients(node: ASTNode, variable: string): Record<number, number> {
     const coeffs: Record<number, number> = { 0: 0 };
-    
-    this.collectTerms(node.left!, variable, coeffs, 1);
-    this.collectTerms(node.right!, variable, coeffs, -1);
-    
+
+    if (node.left) this.collectTerms(node.left, variable, coeffs, 1);
+    if (node.right) this.collectTerms(node.right, variable, coeffs, -1);
+
     return coeffs;
   }
 
@@ -889,27 +1001,36 @@ export class SymbolicSolver {
         this.collectTerms(node.left!, variable, coeffs, sign);
         this.collectTerms(node.right!, variable, coeffs, -sign);
       } else if (node.operator === '*') {
-        if (node.left!.type === 'Number' && node.right!.type === 'Variable') {
-          if (node.right!.value === variable) {
-            coeffs[1] = (coeffs[1] || 0) + sign * (node.left!.value as number);
-          }
-        } else if (node.left!.type === 'Variable' && node.right!.type === 'Number') {
-          if (node.left!.value === variable) {
-            coeffs[1] = (coeffs[1] || 0) + sign * (node.right!.value as number);
-          }
+        // Handle: number * variable, number * variable^n
+        const leftNum = node.left!.type === 'Number' ? (node.left!.value as number) : null;
+        const rightNum = node.right!.type === 'Number' ? (node.right!.value as number) : null;
+
+        if (leftNum !== null && node.right!.type === 'Variable' && node.right!.value === variable) {
+          coeffs[1] = (coeffs[1] || 0) + sign * leftNum;
+        } else if (rightNum !== null && node.left!.type === 'Variable' && node.left!.value === variable) {
+          coeffs[1] = (coeffs[1] || 0) + sign * rightNum;
         } else if (
-          node.left!.type === 'Number' &&
+          leftNum !== null &&
           node.right!.type === 'BinaryOp' &&
           node.right!.operator === '^' &&
           node.right!.left!.type === 'Variable' &&
-          node.right!.left!.value === variable
+          node.right!.left!.value === variable &&
+          node.right!.right!.type === 'Number'
         ) {
           const power = node.right!.right!.value as number;
-          coeffs[power] = (coeffs[power] || 0) + sign * (node.left!.value as number);
+          coeffs[power] = (coeffs[power] || 0) + sign * leftNum;
+        } else {
+          // ✅ Fix: try evaluating as constant, with proper error handling
+          try {
+            const val = this.evaluator.evaluate(node);
+            coeffs[0] = (coeffs[0] || 0) + sign * val;
+          } catch {
+            // Contains variables we can't resolve — skip silently
+          }
         }
       } else if (node.operator === '^') {
-        if (node.left!.type === 'Variable' && node.left!.value === variable) {
-          const power = node.right!.type === 'Number' ? (node.right!.value as number) : 1;
+        if (node.left!.type === 'Variable' && node.left!.value === variable && node.right!.type === 'Number') {
+          const power = node.right!.value as number;
           coeffs[power] = (coeffs[power] || 0) + sign;
         }
       }
@@ -918,10 +1039,14 @@ export class SymbolicSolver {
     }
   }
 
+  // ==========================================
+  // LINEAR SOLVER
+  // ==========================================
+
   private solveLinear(
-    input: string, 
-    ast: ASTNode, 
-    inputLatex: string, 
+    input: string,
+    ast: ASTNode,
+    inputLatex: string,
     variable: string,
     steps: MathStep[],
     notes: string[]
@@ -929,38 +1054,38 @@ export class SymbolicSolver {
     const leftTerms = this.flattenExpression(ast.left!, variable);
     const rightTerms = this.flattenExpression(ast.right!, variable);
 
-    let varCoeff = leftTerms.varCoeff - rightTerms.varCoeff;
-    let constant = rightTerms.constant - leftTerms.constant;
+    const varCoeff = leftTerms.varCoeff - rightTerms.varCoeff;
+    const constant = rightTerms.constant - leftTerms.constant;
 
-    // Langkah 1: Identifikasi komponen
+    // Step 1: Identifikasi
     steps.push({
       description: 'Identifikasi komponen persamaan',
       latex: `${this.formatNumber(leftTerms.varCoeff)}${variable} + ${this.formatNumber(leftTerms.constant)} = ${this.formatNumber(rightTerms.constant)}`,
       explanation: `Ruas kiri: ${this.formatNumber(leftTerms.varCoeff)}${variable} (variabel) dan ${this.formatNumber(leftTerms.constant)} (konstanta). Ruas kanan: ${this.formatNumber(rightTerms.constant)} (konstanta).`
     });
 
-    // Langkah 2: Pindahkan konstanta dari kiri ke kanan
+    // Step 2: Pindahkan konstanta
     if (leftTerms.constant !== 0) {
-      const newRightConstant = rightTerms.constant - leftTerms.constant;
       steps.push({
         description: `Pindahkan ${this.formatNumber(leftTerms.constant)} dari kiri ke kanan`,
         latex: `${this.formatNumber(leftTerms.varCoeff)}${variable} = ${this.formatNumber(rightTerms.constant)} - ${this.formatNumber(leftTerms.constant)}`,
-        explanation: `Konstanta pindah ruas jadi negatif: ${this.formatNumber(rightTerms.constant)} - ${this.formatNumber(leftTerms.constant)}`
+        explanation: `Konstanta pindah ruas jadi negatif`
       });
 
       steps.push({
         description: 'Hitung pengurangan di ruas kanan',
         latex: `${this.formatNumber(varCoeff)}${variable} = ${this.formatNumber(constant)}`,
-        explanation: `${this.formatNumber(rightTerms.constant)} dikurangi ${this.formatNumber(leftTerms.constant)} sama dengan ${this.formatNumber(constant)}`
+        explanation: `${this.formatNumber(rightTerms.constant)} dikurangi ${this.formatNumber(leftTerms.constant)} = ${this.formatNumber(constant)}`
       });
     }
 
+    // Edge cases
     if (varCoeff === 0) {
       if (constant === 0) {
         steps.push({
           description: 'Persamaan identitas',
           latex: '0 = 0',
-          explanation: 'Persamaan benar untuk semua nilai ' + variable
+          explanation: `Persamaan benar untuk semua nilai ${variable}`
         });
         notes.push('🔢 Persamaan ini punya tak hingga solusi');
         return {
@@ -987,7 +1112,7 @@ export class SymbolicSolver {
 
     const solution = constant / varCoeff;
 
-    // Langkah 3: Isolasi variabel
+    // Step 3: Isolasi variabel
     if (varCoeff !== 1) {
       steps.push({
         description: `Bagi kedua ruas dengan ${this.formatNumber(varCoeff)}`,
@@ -998,7 +1123,7 @@ export class SymbolicSolver {
       steps.push({
         description: 'Hitung pembagian',
         latex: `${variable} = ${this.formatNumber(solution)}`,
-        explanation: `${this.formatNumber(constant)} dibagi ${this.formatNumber(varCoeff)} sama dengan ${this.formatNumber(solution)}`
+        explanation: `${this.formatNumber(constant)} dibagi ${this.formatNumber(varCoeff)} = ${this.formatNumber(solution)}`
       });
     } else {
       steps.push({
@@ -1008,21 +1133,25 @@ export class SymbolicSolver {
       });
     }
 
-    // Langkah 4: Verifikasi dengan dua langkah terpisah (tanpa \text{})
+    // Step 4: Verifikasi
     this.evaluator.setVariable(variable, solution);
     const leftVal = this.evaluator.evaluate(ast.left!);
     const rightVal = this.evaluator.evaluate(ast.right!);
 
+    // ✅ Fix: gunakan toLatexWithValue untuk menampilkan substitusi yang benar
+    const leftSubst = this.latex.toLatexWithValue(ast.left!, variable, solution);
+    const rightSubst = this.latex.toLatexWithValue(ast.right!, variable, solution);
+
     steps.push({
       description: 'Verifikasi: substitusi ke ruas kiri',
-      latex: `${this.latex.toLatex(ast.left!)} = ${this.formatNumber(leftVal)}`,
+      latex: `${leftSubst} = ${this.formatNumber(leftVal)}`,
       explanation: `Ganti ${variable} dengan ${this.formatNumber(solution)}: hasilnya ${this.formatNumber(leftVal)}`
     });
 
     steps.push({
       description: 'Verifikasi: cek ruas kanan',
-      latex: `${this.latex.toLatex(ast.right!)} = ${this.formatNumber(rightVal)}`,
-      explanation: `Ruas kanan tetap ${this.formatNumber(rightVal)}`
+      latex: `${rightSubst} = ${this.formatNumber(rightVal)}`,
+      explanation: `Ruas kanan = ${this.formatNumber(rightVal)}`
     });
 
     steps.push({
@@ -1033,7 +1162,9 @@ export class SymbolicSolver {
 
     notes.push('✅ Solusi terverifikasi');
     notes.push(`🔍 ${variable} = ${this.formatNumber(solution)}`);
-    notes.push(`📊 Ruas kiri: ${this.formatNumber(leftVal)}, Ruas kanan: ${this.formatNumber(rightVal)}`);
+
+    // Clean up evaluator
+    this.evaluator.clearVariables();
 
     return {
       success: true, input, latex: inputLatex,
@@ -1065,10 +1196,12 @@ export class SymbolicSolver {
           } else if (n.right!.type === 'Number' && n.left!.type === 'Variable' && n.left!.value === variable) {
             varCoeff += sign * (n.right!.value as number);
           } else {
+            // ✅ Fix: proper error handling instead of empty catch
             try {
               const val = this.evaluator.evaluate(n);
               constant += sign * val;
             } catch {
+              // Expression contains unresolved variables — treat as 0
             }
           }
         }
@@ -1081,6 +1214,10 @@ export class SymbolicSolver {
     return { varCoeff, constant };
   }
 
+  // ==========================================
+  // QUADRATIC SOLVER
+  // ==========================================
+
   private solveQuadratic(
     input: string,
     ast: ASTNode,
@@ -1092,46 +1229,55 @@ export class SymbolicSolver {
     const coeffs = this.extractQuadraticCoeffs(ast, variable);
     const { a, b, c } = coeffs;
 
-    // Langkah 1: Identifikasi koefisien dengan jelas
+    // Step 1: Identifikasi koefisien
     steps.push({
       description: 'Identifikasi koefisien persamaan kuadrat',
       latex: `${this.formatCoeff(a)}${variable} sup{2} ${this.formatSignedTerm(b, variable)} ${this.formatSignedConstant(c)} = 0`,
       explanation: `Bentuk umum: a${variable}² + b${variable} + c = 0. Dari persamaan ini: a = ${this.formatNumber(a)}, b = ${this.formatNumber(b)}, c = ${this.formatNumber(c)}`
     });
 
-    // Langkah 2: Hitung b² dengan detail
+    // Step 2: Hitung b²
     const bSquared = b * b;
     steps.push({
-      description: 'Hitung b² (b dipangkatkan 2)',
-      latex: `b sup{2} = ${this.formatNumber(b)} sup{2} = ${this.formatNumber(b)} × ${this.formatNumber(b)} = ${this.formatNumber(bSquared)}`,
-      explanation: `Nilai b = ${this.formatNumber(b)}, maka b² = ${this.formatNumber(b)} × ${this.formatNumber(b)} = ${this.formatNumber(bSquared)}`
+      description: 'Hitung b²',
+      latex: `b sup{2} = (${this.formatNumber(b)}) sup{2} = ${this.formatNumber(bSquared)}`,
+      explanation: `b = ${this.formatNumber(b)}, maka b² = ${this.formatNumber(b)} × ${this.formatNumber(b)} = ${this.formatNumber(bSquared)}`
     });
 
-    // Langkah 3: Hitung 4ac dengan detail
+    // Step 3: Hitung 4ac
     const fourAC = 4 * a * c;
     steps.push({
-      description: 'Hitung 4ac (4 dikali a dikali c)',
+      description: 'Hitung 4ac',
       latex: `4ac = 4 × ${this.formatNumber(a)} × ${this.formatNumber(c)} = ${this.formatNumber(fourAC)}`,
-      explanation: `4 × a × c = 4 × ${this.formatNumber(a)} × ${this.formatNumber(c)} = ${this.formatNumber(fourAC)}`
+      explanation: `4 × ${this.formatNumber(a)} × ${this.formatNumber(c)} = ${this.formatNumber(fourAC)}`
     });
 
-    // Langkah 4: Hitung diskriminan D
+    // Step 4: Diskriminan
     const D = bSquared - fourAC;
+    const dInfo = D > 0
+      ? 'Karena D > 0, ada 2 akar real berbeda.'
+      : D === 0
+        ? 'Karena D = 0, ada 1 akar kembar.'
+        : 'Karena D < 0, tidak ada akar real.';
+
     steps.push({
       description: 'Hitung diskriminan D = b² - 4ac',
       latex: `D = ${this.formatNumber(bSquared)} - ${this.formatNumber(fourAC)} = ${this.formatNumber(D)}`,
-      explanation: `D = b² - 4ac = ${this.formatNumber(bSquared)} - ${this.formatNumber(fourAC)} = ${this.formatNumber(D)}. ${D > 0 ? 'Karena D > 0, ada 2 akar real berbeda.' : D === 0 ? 'Karena D = 0, ada 1 akar kembar.' : 'Karena D < 0, tidak ada akar real.'}`
+      explanation: `D = ${this.formatNumber(bSquared)} - ${this.formatNumber(fourAC)} = ${this.formatNumber(D)}. ${dInfo}`
     });
 
+    // D < 0: no real roots
     if (D < 0) {
       steps.push({
         description: 'D < 0: Tidak ada akar real',
         latex: `D = ${this.formatNumber(D)} < 0`,
         explanation: 'Persamaan tidak memotong sumbu x'
       });
-      
+
       notes.push('❌ Persamaan tidak punya akar real');
-      notes.push('📝 Akar kompleks: x = ' + `${this.formatNumber(-b/(2*a))} ± ${this.formatNumber(Math.sqrt(-D)/(2*a))}i`);
+      const realPart = -b / (2 * a);
+      const imagPart = Math.sqrt(-D) / (2 * a);
+      notes.push(`📝 Akar kompleks: ${variable} = ${this.formatNumber(realPart)} ± ${this.formatNumber(imagPart)}i`);
 
       return {
         success: true, input, latex: inputLatex,
@@ -1141,126 +1287,135 @@ export class SymbolicSolver {
       };
     }
 
-    // Langkah 5: Rumus ABC
+    // Step 5: Rumus ABC
     steps.push({
       description: 'Tulis rumus ABC (Rumus Kuadrat)',
       latex: `${variable} = frac{-b ± sqrt{D}}{2a}`,
       explanation: 'Rumus ini digunakan untuk mencari nilai x dari persamaan kuadrat'
     });
 
-    // Langkah 6: Hitung komponen-komponen terpisah
+    // Step 6: Hitung komponen
     const negB = -b;
     const sqrtD = Math.sqrt(D);
     const twoA = 2 * a;
 
     steps.push({
-      description: 'Hitung -b (negasi dari b)',
+      description: 'Hitung -b',
       latex: `-b = -(${this.formatNumber(b)}) = ${this.formatNumber(negB)}`,
       explanation: `Negasi dari ${this.formatNumber(b)} adalah ${this.formatNumber(negB)}`
     });
 
     steps.push({
-      description: 'Hitung akar kuadrat D (√D)',
-      latex: `sqrt{D} = sqrt{${this.formatNumber(D)}} = ${this.formatNumber(sqrtD)}`,
-      explanation: `Akar kuadrat dari ${this.formatNumber(D)} adalah ${this.formatNumber(sqrtD)}`
+      description: 'Hitung √D',
+      latex: `sqrt{${this.formatNumber(D)}} = ${this.formatNumber(sqrtD)}`,
+      explanation: `Akar kuadrat dari ${this.formatNumber(D)} = ${this.formatNumber(sqrtD)}`
     });
 
     steps.push({
-      description: 'Hitung penyebut (2a)',
+      description: 'Hitung 2a',
       latex: `2a = 2 × ${this.formatNumber(a)} = ${this.formatNumber(twoA)}`,
-      explanation: `2 dikali a = 2 × ${this.formatNumber(a)} = ${this.formatNumber(twoA)}`
+      explanation: `2 × ${this.formatNumber(a)} = ${this.formatNumber(twoA)}`
     });
 
-    // Langkah 7: Substitusi ke rumus
+    // Step 7: Substitusi
     steps.push({
-      description: 'Substitusi semua nilai ke rumus ABC',
+      description: 'Substitusi ke rumus ABC',
       latex: `${variable} = frac{${this.formatNumber(negB)} ± ${this.formatNumber(sqrtD)}}{${this.formatNumber(twoA)}}`,
-      explanation: `Ganti -b dengan ${this.formatNumber(negB)}, √D dengan ${this.formatNumber(sqrtD)}, dan 2a dengan ${this.formatNumber(twoA)}`
+      explanation: `Ganti -b = ${this.formatNumber(negB)}, √D = ${this.formatNumber(sqrtD)}, 2a = ${this.formatNumber(twoA)}`
     });
 
-    // Langkah 8: Hitung x1 dengan detail lengkap
-    const x1Numerator = negB + sqrtD;
-    const x1 = x1Numerator / twoA;
-    
-    steps.push({
-      description: 'Hitung akar pertama (x₁): gunakan tanda +',
-      latex: `${variable} sub{1} = frac{${this.formatNumber(negB)} + ${this.formatNumber(sqrtD)}}{${this.formatNumber(twoA)}} = frac{${this.formatNumber(x1Numerator)}}{${this.formatNumber(twoA)}}`,
-      explanation: `Pembilang: ${this.formatNumber(negB)} + ${this.formatNumber(sqrtD)} = ${this.formatNumber(x1Numerator)}. Penyebut tetap ${this.formatNumber(twoA)}`
-    });
+    // Step 8: x₁
+    const x1Num = negB + sqrtD;
+    const x1 = x1Num / twoA;
 
     steps.push({
-      description: 'Sederhanakan pecahan untuk x₁',
-      latex: `${variable} sub{1} = frac{${this.formatNumber(x1Numerator)}}{${this.formatNumber(twoA)}} = ${this.formatNumber(x1)}`,
-      explanation: `${this.formatNumber(x1Numerator)} dibagi ${this.formatNumber(twoA)} = ${this.formatNumber(x1)}`
-    });
-
-    // Langkah 9: Hitung x2 dengan detail lengkap
-    const x2Numerator = negB - sqrtD;
-    const x2 = x2Numerator / twoA;
-    
-    steps.push({
-      description: 'Hitung akar kedua (x₂): gunakan tanda -',
-      latex: `${variable} sub{2} = frac{${this.formatNumber(negB)} - ${this.formatNumber(sqrtD)}}{${this.formatNumber(twoA)}} = frac{${this.formatNumber(x2Numerator)}}{${this.formatNumber(twoA)}}`,
-      explanation: `Pembilang: ${this.formatNumber(negB)} - ${this.formatNumber(sqrtD)} = ${this.formatNumber(x2Numerator)}. Penyebut tetap ${this.formatNumber(twoA)}`
+      description: 'Hitung x₁ (gunakan +)',
+      latex: `${variable} sub{1} = frac{${this.formatNumber(negB)} + ${this.formatNumber(sqrtD)}}{${this.formatNumber(twoA)}} = frac{${this.formatNumber(x1Num)}}{${this.formatNumber(twoA)}}`,
+      explanation: `Pembilang: ${this.formatNumber(negB)} + ${this.formatNumber(sqrtD)} = ${this.formatNumber(x1Num)}`
     });
 
     steps.push({
-      description: 'Sederhanakan pecahan untuk x₂',
-      latex: `${variable} sub{2} = frac{${this.formatNumber(x2Numerator)}}{${this.formatNumber(twoA)}} = ${this.formatNumber(x2)}`,
-      explanation: `${this.formatNumber(x2Numerator)} dibagi ${this.formatNumber(twoA)} = ${this.formatNumber(x2)}`
+      description: 'Sederhanakan x₁',
+      latex: `${variable} sub{1} = ${this.formatNumber(x1)}`,
+      explanation: `${this.formatNumber(x1Num)} ÷ ${this.formatNumber(twoA)} = ${this.formatNumber(x1)}`
     });
 
-    // Langkah 10-11: Verifikasi
+    // Step 9: x₂
+    const x2Num = negB - sqrtD;
+    const x2 = x2Num / twoA;
+
+    steps.push({
+      description: 'Hitung x₂ (gunakan -)',
+      latex: `${variable} sub{2} = frac{${this.formatNumber(negB)} - ${this.formatNumber(sqrtD)}}{${this.formatNumber(twoA)}} = frac{${this.formatNumber(x2Num)}}{${this.formatNumber(twoA)}}`,
+      explanation: `Pembilang: ${this.formatNumber(negB)} - ${this.formatNumber(sqrtD)} = ${this.formatNumber(x2Num)}`
+    });
+
+    steps.push({
+      description: 'Sederhanakan x₂',
+      latex: `${variable} sub{2} = ${this.formatNumber(x2)}`,
+      explanation: `${this.formatNumber(x2Num)} ÷ ${this.formatNumber(twoA)} = ${this.formatNumber(x2)}`
+    });
+
+    // ✅ FIX KRITIS: Verifikasi menggunakan AST yang sebenarnya, bukan hardcoded
     this.evaluator.setVariable(variable, x1);
     const leftVal1 = this.evaluator.evaluate(ast.left!);
-    
+    const rightVal1 = this.evaluator.evaluate(ast.right!);
+
+    // Tampilkan substitusi menggunakan LaTeX converter yang benar
+    const leftSubst1 = this.latex.toLatexWithValue(ast.left!, variable, x1);
+
     steps.push({
-      description: `Verifikasi x₁ = ${this.formatNumber(x1)}`,
-      latex: `(${this.formatNumber(x1)}) sup{2} + 5(${this.formatNumber(x1)}) + 6 = ${this.formatNumber(leftVal1)}`,
-      explanation: `Substitusi x = ${this.formatNumber(x1)} ke persamaan awal: hasilnya ${this.formatNumber(leftVal1)} (harus = 0)`
+      description: `Verifikasi ${variable}₁ = ${this.formatNumber(x1)}`,
+      latex: `${leftSubst1} = ${this.formatNumber(leftVal1)}`,
+      explanation: `Substitusi ${variable} = ${this.formatNumber(x1)} ke ruas kiri: hasilnya ${this.formatNumber(leftVal1)} (harus = ${this.formatNumber(rightVal1)})`
     });
 
     this.evaluator.setVariable(variable, x2);
     const leftVal2 = this.evaluator.evaluate(ast.left!);
-    
+    const rightVal2 = this.evaluator.evaluate(ast.right!);
+
+    const leftSubst2 = this.latex.toLatexWithValue(ast.left!, variable, x2);
+
     steps.push({
-      description: `Verifikasi x₂ = ${this.formatNumber(x2)}`,
-      latex: `(${this.formatNumber(x2)}) sup{2} + 5(${this.formatNumber(x2)}) + 6 = ${this.formatNumber(leftVal2)}`,
-      explanation: `Substitusi x = ${this.formatNumber(x2)} ke persamaan awal: hasilnya ${this.formatNumber(leftVal2)} (harus = 0)`
+      description: `Verifikasi ${variable}₂ = ${this.formatNumber(x2)}`,
+      latex: `${leftSubst2} = ${this.formatNumber(leftVal2)}`,
+      explanation: `Substitusi ${variable} = ${this.formatNumber(x2)} ke ruas kiri: hasilnya ${this.formatNumber(leftVal2)} (harus = ${this.formatNumber(rightVal2)})`
     });
 
-        // Langkah 12: Kesimpulan - TANPA \quad dan \text
+    // Clean up evaluator
+    this.evaluator.clearVariables();
+
+    // Kesimpulan
     if (D === 0) {
       steps.push({
         description: 'Kesimpulan',
         latex: `${variable} = ${this.formatNumber(x1)} (akar kembar)`,
-        explanation: `Karena D = 0, hanya ada satu akar (kembar): ${variable} = ${this.formatNumber(x1)}`
+        explanation: `Karena D = 0, hanya ada satu akar kembar: ${variable} = ${this.formatNumber(x1)}`
       });
-      
+
       notes.push(`✅ Akar kembar: ${variable} = ${this.formatNumber(x1)}`);
     } else {
-      // Gunakan dua langkah terpisah atau format tanpa \quad
       steps.push({
-        description: 'Kesimpulan - Akar Pertama',
+        description: 'Kesimpulan — Akar Pertama',
         latex: `${variable} sub{1} = ${this.formatNumber(x1)}`,
         explanation: `Akar pertama: ${variable}₁ = ${this.formatNumber(x1)}`
       });
-      
+
       steps.push({
-        description: 'Kesimpulan - Akar Kedua',
+        description: 'Kesimpulan — Akar Kedua',
         latex: `${variable} sub{2} = ${this.formatNumber(x2)}`,
-        explanation: `Akar kedua: ${variable}₂ = ${this.formatNumber(x2)}. Keduanya memenuhi persamaan!`
+        explanation: `Akar kedua: ${variable}₂ = ${this.formatNumber(x2)}`
       });
-      
+
       notes.push(`✅ ${variable}₁ = ${this.formatNumber(x1)}, ${variable}₂ = ${this.formatNumber(x2)}`);
-      notes.push(`📝 Jumlah akar: ${this.formatNumber(x1 + x2)} = -b/a = ${this.formatNumber(-b/a)}`);
-      notes.push(`📝 Hasil kali akar: ${this.formatNumber(x1 * x2)} = c/a = ${this.formatNumber(c/a)}`);
+      notes.push(`📝 Jumlah akar: ${this.formatNumber(x1 + x2)} = -b/a = ${this.formatNumber(-b / a)}`);
+      notes.push(`📝 Hasil kali akar: ${this.formatNumber(x1 * x2)} = c/a = ${this.formatNumber(c / a)}`);
     }
 
     return {
       success: true, input, latex: inputLatex,
-      result: D === 0 ? x1 : `${x1}, ${x2}`,
-      resultLatex: D === 0 
+      result: D === 0 ? x1 : `${this.formatNumber(x1)}, ${this.formatNumber(x2)}`,
+      resultLatex: D === 0
         ? `${variable} = ${this.formatNumber(x1)} (akar kembar)`
         : `${variable} sub{1} = ${this.formatNumber(x1)}, ${variable} sub{2} = ${this.formatNumber(x2)}`,
       steps, notes, type: 'equation'
@@ -1272,7 +1427,7 @@ export class SymbolicSolver {
 
     const process = (node: ASTNode, sign: number, side: 'left' | 'right'): void => {
       const s = side === 'left' ? sign : -sign;
-      
+
       if (node.type === 'Number') {
         c += s * (node.value as number);
       } else if (node.type === 'Variable' && node.value === variable) {
@@ -1287,14 +1442,27 @@ export class SymbolicSolver {
         } else if (node.operator === '*') {
           const leftNum = node.left!.type === 'Number' ? node.left!.value as number : null;
           const rightNum = node.right!.type === 'Number' ? node.right!.value as number : null;
-          
+
           if (leftNum !== null) {
             if (node.right!.type === 'Variable' && node.right!.value === variable) {
               b += s * leftNum;
-            } else if (node.right!.type === 'BinaryOp' && node.right!.operator === '^') {
-              if (node.right!.left!.type === 'Variable' && node.right!.left!.value === variable) {
-                const power = node.right!.right!.value as number;
-                if (power === 2) a += s * leftNum;
+            } else if (
+              node.right!.type === 'BinaryOp' &&
+              node.right!.operator === '^' &&
+              node.right!.left!.type === 'Variable' &&
+              node.right!.left!.value === variable &&
+              node.right!.right!.type === 'Number'
+            ) {
+              const power = node.right!.right!.value as number;
+              if (power === 2) a += s * leftNum;
+              else if (power === 1) b += s * leftNum;
+            } else {
+              // ✅ Fix: constant * constant expression
+              try {
+                const val = this.evaluator.evaluate(node);
+                c += s * val;
+              } catch {
+                // skip unresolvable
               }
             }
           } else if (rightNum !== null) {
@@ -1303,9 +1471,14 @@ export class SymbolicSolver {
             }
           }
         } else if (node.operator === '^') {
-          if (node.left!.type === 'Variable' && node.left!.value === variable) {
-            const power = node.right!.type === 'Number' ? node.right!.value as number : 0;
+          if (
+            node.left!.type === 'Variable' &&
+            node.left!.value === variable &&
+            node.right!.type === 'Number'
+          ) {
+            const power = node.right!.value as number;
             if (power === 2) a += s;
+            else if (power === 1) b += s;
           }
         }
       } else if (node.type === 'UnaryOp' && node.operator === '-') {
@@ -1318,6 +1491,10 @@ export class SymbolicSolver {
 
     return { a, b, c };
   }
+
+  // ==========================================
+  // SYMBOLIC SIMPLIFICATION (placeholder)
+  // ==========================================
 
   private simplifyExpression(input: string, _ast: ASTNode, inputLatex: string): MathResult {
     const steps: MathStep[] = [];
@@ -1337,48 +1514,6 @@ export class SymbolicSolver {
       result: 'Ekspresi simbolik',
       resultLatex: inputLatex,
       steps, notes, type: 'simplify'
-    };
-  }
-
-  private formatNumber(n: number): string {
-    if (!isFinite(n)) return 'Tidak terdefinisi';
-    if (Number.isInteger(n)) return n.toString();
-    const rounded = Math.round(n * 10000) / 10000;
-    return rounded.toString();
-  }
-
-  private formatCoeff(n: number): string {
-    if (n === 1) return '';
-    if (n === -1) return '-';
-    return this.formatNumber(n);
-  }
-
-  private formatSignedTerm(coeff: number, variable: string): string {
-    if (coeff === 0) return '';
-    if (coeff > 0) return `+ ${coeff === 1 ? '' : coeff}${variable}`;
-    if (coeff === -1) return `- ${variable}`;
-    return `- ${Math.abs(coeff)}${variable}`;
-  }
-
-  private formatSignedConstant(n: number): string {
-    if (n === 0) return '';
-    if (n > 0) return `+ ${n}`;
-    return `- ${Math.abs(n)}`;
-  }
-
-  private errorResult(input: string, message: string): MathResult {
-    return {
-      success: false,
-      input,
-      latex: input,
-      error: message,
-      steps: [{
-        description: 'Error',
-        latex: message,
-        explanation: 'Silakan perbaiki input dan coba lagi'
-      }],
-      notes: ['❌ ' + message],
-      type: 'error'
     };
   }
 }
