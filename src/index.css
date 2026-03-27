@@ -1,53 +1,22 @@
 @import "tailwindcss";
 
+/* ==========================================
+   🎨 MATHGENIUS PRO - ANIMATIONS & STYLES
+   ========================================== */
+
+/* Base Styles */
 body {
-  font-family: 'Inter', sans-serif;
+  background-color: #0f172a;
+  color: white;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-@keyframes fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slide-in {
-  from {
-    opacity: 0;
-    transform: translateX(-12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes pulse-glow {
-  0%, 100% {
-    box-shadow: 0 0 20px rgba(99, 102, 241, 0.1);
-  }
-  50% {
-    box-shadow: 0 0 30px rgba(99, 102, 241, 0.25);
-  }
-}
-
-.animate-fade-in {
-  animation: fade-in 0.5s ease-out both;
-}
-
-.animate-slide-in {
-  animation: slide-in 0.4s ease-out both;
-}
-
-/* Custom scrollbar */
+/* Hide scrollbar but keep functionality */
 ::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -55,50 +24,254 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.3);
 }
 
-/* Selection */
-::selection {
-  background: rgba(99, 102, 241, 0.3);
-  color: white;
+/* ==========================================
+   🌈 ANIMATIONS
+   ========================================== */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-/* Input autofill override */
-input:-webkit-autofill {
-  -webkit-box-shadow: 0 0 0 30px rgb(15 23 42) inset !important;
-  -webkit-text-fill-color: white !important;
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-@keyframes pulse-once {
-  0% {
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
     transform: scale(1);
   }
-  50% {
-    transform: scale(1.02);
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes confetti {
+  0% {
+    transform: translateY(-10px) rotate(0deg);
+    opacity: 1;
   }
   100% {
-    transform: scale(1);
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
   }
 }
 
-.animate-pulse-once {
-  animation: pulse-once 0.5s ease-out;
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
 }
 
-/* Math typography */
-.math-font {
-  font-family: 'JetBrains Mono', 'Courier New', monospace;
+@keyframes glow {
+  0%, 100% { 
+    box-shadow: 0 0 5px rgba(168, 85, 247, 0.5), 
+                0 0 10px rgba(168, 85, 247, 0.3);
+  }
+  50% { 
+    box-shadow: 0 0 20px rgba(168, 85, 247, 0.8), 
+                0 0 30px rgba(168, 85, 247, 0.5);
+  }
 }
 
-/* Better touch targets for mobile */
-@media (max-width: 640px) {
-  button {
-    min-height: 44px;
+/* ==========================================
+   🎯 UTILITY CLASSES
+   ========================================== */
+
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+.animate-fadeInUp {
+  animation: fadeInUp 0.5s ease-out forwards;
+}
+
+.animate-slideIn {
+  animation: slideIn 0.4s ease-out forwards;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.5s ease-out forwards;
+}
+
+.animate-slideInRight {
+  animation: slideInRight 0.3s ease-out forwards;
+}
+
+.animate-scaleIn {
+  animation: scaleIn 0.3s ease-out forwards;
+}
+
+.animate-bounce {
+  animation: bounce 1s ease-in-out infinite;
+}
+
+.animate-pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.animate-confetti {
+  animation: confetti 2s ease-in forwards;
+}
+
+.animate-shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+.animate-glow {
+  animation: glow 2s ease-in-out infinite;
+}
+
+/* ==========================================
+   📐 MATH DISPLAY STYLES
+   ========================================== */
+
+/* Fraction styling */
+.math-fraction {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  margin-left: 0.25rem;
+  margin-right: 0.25rem;
+}
+
+.math-fraction-line {
+  width: 100%;
+  height: 2px;
+  background: currentColor;
+  border-radius: 9999px;
+}
+
+/* Superscript */
+.math-sup {
+  font-size: 0.65em;
+  vertical-align: super;
+}
+
+/* Subscript */
+.math-sub {
+  font-size: 0.65em;
+  vertical-align: sub;
+}
+
+/* Square root */
+.math-sqrt {
+  display: inline-flex;
+  align-items: stretch;
+}
+
+.math-sqrt-symbol {
+  color: #a855f7;
+}
+
+.math-sqrt-content {
+  border-top: 2px solid #a855f7;
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
+}
+
+/* ==========================================
+   🌙 SPECIAL EFFECTS
+   ========================================== */
+
+/* Glassmorphism */
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(to right, #a855f7, #ec4899);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Neon glow */
+.neon-purple {
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.5),
+              0 0 20px rgba(168, 85, 247, 0.3),
+              0 0 30px rgba(168, 85, 247, 0.2);
+}
+
+.neon-green {
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.5),
+              0 0 20px rgba(34, 197, 94, 0.3),
+              0 0 30px rgba(34, 197, 94, 0.2);
+}
+
+/* Touch feedback for mobile */
+@media (hover: none) {
+  button:active {
+    transform: scale(0.95);
   }
 }
