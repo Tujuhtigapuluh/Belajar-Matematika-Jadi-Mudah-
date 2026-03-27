@@ -932,34 +932,34 @@ export class SymbolicSolver {
     let varCoeff = leftTerms.varCoeff - rightTerms.varCoeff;
     let constant = rightTerms.constant - leftTerms.constant;
 
-    // Langkah 1: Identifikasi koefisien
+    // Langkah 1: Identifikasi komponen
     steps.push({
-      description: 'Identifikasi koefisien variabel dan konstanta',
+      description: 'Identifikasi komponen persamaan',
       latex: `${this.formatNumber(leftTerms.varCoeff)}${variable} + ${this.formatNumber(leftTerms.constant)} = ${this.formatNumber(rightTerms.constant)}`,
-      explanation: `Di ruas kiri: koefisien ${variable} adalah ${this.formatNumber(leftTerms.varCoeff)}, konstanta adalah ${this.formatNumber(leftTerms.constant)}. Di ruas kanan: konstanta adalah ${this.formatNumber(rightTerms.constant)}`
+      explanation: `Ruas kiri: ${this.formatNumber(leftTerms.varCoeff)}${variable} (variabel) dan ${this.formatNumber(leftTerms.constant)} (konstanta). Ruas kanan: ${this.formatNumber(rightTerms.constant)} (konstanta).`
     });
 
     // Langkah 2: Pindahkan konstanta dari kiri ke kanan
     if (leftTerms.constant !== 0) {
+      const newRightConstant = rightTerms.constant - leftTerms.constant;
       steps.push({
-        description: `Pindahkan ${this.formatNumber(leftTerms.constant)} dari kiri ke kanan (ubah tanda jadi negatif)`,
+        description: `Pindahkan ${this.formatNumber(leftTerms.constant)} dari kiri ke kanan`,
         latex: `${this.formatNumber(leftTerms.varCoeff)}${variable} = ${this.formatNumber(rightTerms.constant)} - ${this.formatNumber(leftTerms.constant)}`,
-        explanation: `${this.formatNumber(rightTerms.constant)} - ${this.formatNumber(leftTerms.constant)} = ${this.formatNumber(constant)}. Jadi ${this.formatNumber(leftTerms.varCoeff)}${variable} = ${this.formatNumber(constant)}`
+        explanation: `Konstanta pindah ruas jadi negatif: ${this.formatNumber(rightTerms.constant)} - ${this.formatNumber(leftTerms.constant)}`
+      });
+
+      steps.push({
+        description: 'Hitung pengurangan di ruas kanan',
+        latex: `${this.formatNumber(varCoeff)}${variable} = ${this.formatNumber(constant)}`,
+        explanation: `${this.formatNumber(rightTerms.constant)} dikurangi ${this.formatNumber(leftTerms.constant)} sama dengan ${this.formatNumber(constant)}`
       });
     }
-
-    // Langkah 3: Sederhanakan ruas kanan
-    steps.push({
-      description: 'Hitung operasi di ruas kanan',
-      latex: `${this.formatNumber(varCoeff)}${variable} = ${this.formatNumber(constant)}`,
-      explanation: `${this.formatNumber(rightTerms.constant)} dikurangi ${this.formatNumber(leftTerms.constant)} sama dengan ${this.formatNumber(constant)}`
-    });
 
     if (varCoeff === 0) {
       if (constant === 0) {
         steps.push({
           description: 'Persamaan identitas',
-          latex: '0 = 0 ✓',
+          latex: '0 = 0',
           explanation: 'Persamaan benar untuk semua nilai ' + variable
         });
         notes.push('🔢 Persamaan ini punya tak hingga solusi');
@@ -971,8 +971,8 @@ export class SymbolicSolver {
         };
       } else {
         steps.push({
-          description: 'Kontradiksi!',
-          latex: `0 ≠ ${this.formatNumber(constant)}`,
+          description: 'Kontradiksi',
+          latex: `0 = ${this.formatNumber(constant)}`,
           explanation: 'Persamaan tidak mungkin dipenuhi'
         });
         notes.push('❌ Persamaan ini tidak punya solusi');
@@ -987,36 +987,53 @@ export class SymbolicSolver {
 
     const solution = constant / varCoeff;
 
-    // Langkah 4: Jelaskan pembagian
+    // Langkah 3: Isolasi variabel
     if (varCoeff !== 1) {
       steps.push({
-        description: `Bagi kedua ruas dengan ${this.formatNumber(varCoeff)} untuk mendapatkan ${variable}`,
+        description: `Bagi kedua ruas dengan ${this.formatNumber(varCoeff)}`,
         latex: `${variable} = frac{${this.formatNumber(constant)}}{${this.formatNumber(varCoeff)}}`,
-        explanation: `${this.formatNumber(constant)} dibagi ${this.formatNumber(varCoeff)} = ${this.formatNumber(solution)}`
+        explanation: `Agar ${variable} sendirian di kiri, bagi ${this.formatNumber(constant)} dengan ${this.formatNumber(varCoeff)}`
+      });
+
+      steps.push({
+        description: 'Hitung pembagian',
+        latex: `${variable} = ${this.formatNumber(solution)}`,
+        explanation: `${this.formatNumber(constant)} dibagi ${this.formatNumber(varCoeff)} sama dengan ${this.formatNumber(solution)}`
+      });
+    } else {
+      steps.push({
+        description: 'Solusi langsung',
+        latex: `${variable} = ${this.formatNumber(solution)}`,
+        explanation: `Nilai ${variable} sudah sendirian di ruas kiri`
       });
     }
 
-    // Langkah 5: Solusi akhir dengan pembuktian
-    steps.push({
-      description: 'Solusi ditemukan!',
-      latex: `${variable} = ${this.formatNumber(solution)}`,
-      explanation: `Nilai ${variable} yang memenuhi persamaan adalah ${this.formatNumber(solution)}`
-    });
-
-    // Langkah 6: Pembuktian (VERIFIKASI)
+    // Langkah 4: Verifikasi dengan dua langkah terpisah (tanpa \text{})
     this.evaluator.setVariable(variable, solution);
     const leftVal = this.evaluator.evaluate(ast.left!);
     const rightVal = this.evaluator.evaluate(ast.right!);
 
     steps.push({
-      description: 'Verifikasi dengan substitusi nilai ke persamaan awal',
-      latex: `${this.latex.toLatex(ast.left!)} = ${this.formatNumber(leftVal)} quad \\text{dan} quad ${this.latex.toLatex(ast.right!)} = ${this.formatNumber(rightVal)}`,
-      explanation: `Substitusi ${variable} = ${this.formatNumber(solution)} ke ruas kiri: ${this.formatNumber(leftVal)}, ke ruas kanan: ${this.formatNumber(rightVal)}. Karena ${this.formatNumber(leftVal)} = ${this.formatNumber(rightVal)}, maka jawaban benar ✓`
+      description: 'Verifikasi: substitusi ke ruas kiri',
+      latex: `${this.latex.toLatex(ast.left!)} = ${this.formatNumber(leftVal)}`,
+      explanation: `Ganti ${variable} dengan ${this.formatNumber(solution)}: hasilnya ${this.formatNumber(leftVal)}`
     });
 
-    notes.push('✅ Solusi sudah benar');
-    notes.push(`🔍 Pembuktian: ${variable} = ${this.formatNumber(solution)}`);
-    notes.push(`   Kiri: ${this.formatNumber(leftVal)}, Kanan: ${this.formatNumber(rightVal)}`);
+    steps.push({
+      description: 'Verifikasi: cek ruas kanan',
+      latex: `${this.latex.toLatex(ast.right!)} = ${this.formatNumber(rightVal)}`,
+      explanation: `Ruas kanan tetap ${this.formatNumber(rightVal)}`
+    });
+
+    steps.push({
+      description: 'Kesimpulan',
+      latex: `${this.formatNumber(leftVal)} = ${this.formatNumber(rightVal)} ✓`,
+      explanation: `Karena ${this.formatNumber(leftVal)} = ${this.formatNumber(rightVal)}, maka ${variable} = ${this.formatNumber(solution)} benar!`
+    });
+
+    notes.push('✅ Solusi terverifikasi');
+    notes.push(`🔍 ${variable} = ${this.formatNumber(solution)}`);
+    notes.push(`📊 Ruas kiri: ${this.formatNumber(leftVal)}, Ruas kanan: ${this.formatNumber(rightVal)}`);
 
     return {
       success: true, input, latex: inputLatex,
