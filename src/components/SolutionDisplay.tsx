@@ -3,8 +3,8 @@
 // ==========================================
 
 import React, { useState, useEffect } from 'react';
-import { MathRenderer } from './MathRenderer';
-import type { MathResult, MathStep } from '../lib/mathEngine';
+import { MathRenderer } from './MathRenderer.tsx';
+import type { MathResult, MathStep } from '../lib/mathEngine.ts';
 
 interface SolutionDisplayProps {
   result: MathResult | null;

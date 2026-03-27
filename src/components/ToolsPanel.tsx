@@ -3,8 +3,8 @@
 // ==========================================
 
 import React, { useState, useRef, useEffect } from 'react';
-import { MathRenderer } from './MathRenderer';
-import type { MathResult } from '../lib/mathEngine';
+import { MathRenderer } from './MathRenderer.tsx';
+import type { MathResult } from '../lib/mathEngine.ts';
 
 interface ToolsPanelProps {
   isOpen: boolean;

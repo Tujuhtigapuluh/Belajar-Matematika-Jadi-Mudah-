@@ -3,11 +3,11 @@
 // ==========================================
 
 import React, { useState, useCallback } from 'react';
-import { mathEngine, type MathResult } from './lib/mathEngine';
-import { MathInput } from './components/MathInput';
-import { SolutionDisplay } from './components/SolutionDisplay';
-import { ToolsPanel } from './components/ToolsPanel';
-import { MathRenderer } from './components/MathRenderer';
+import { mathEngine, type MathResult } from './lib/mathEngine.ts';
+import { MathInput } from './components/MathInput.tsx';
+import { SolutionDisplay } from './components/SolutionDisplay.tsx';
+import { ToolsPanel } from './components/ToolsPanel.tsx';
+import { MathRenderer } from './components/MathRenderer.tsx';
 
 type AppMode = 'calculate' | 'quiz';
 
