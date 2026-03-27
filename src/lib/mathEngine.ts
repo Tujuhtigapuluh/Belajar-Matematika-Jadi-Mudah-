@@ -1229,7 +1229,7 @@ export class SymbolicSolver {
       explanation: `Substitusi x = ${this.formatNumber(x2)} ke persamaan awal: hasilnya ${this.formatNumber(leftVal2)} (harus = 0)`
     });
 
-    // Langkah 12: Kesimpulan
+        // Langkah 12: Kesimpulan - TANPA \quad dan \text
     if (D === 0) {
       steps.push({
         description: 'Kesimpulan',
@@ -1239,10 +1239,17 @@ export class SymbolicSolver {
       
       notes.push(`✅ Akar kembar: ${variable} = ${this.formatNumber(x1)}`);
     } else {
+      // Gunakan dua langkah terpisah atau format tanpa \quad
       steps.push({
-        description: 'Kesimpulan',
-        latex: `${variable} sub{1} = ${this.formatNumber(x1)} quad ${variable} sub{2} = ${this.formatNumber(x2)}`,
-        explanation: `Dua akar real berbeda: ${variable}₁ = ${this.formatNumber(x1)} dan ${variable}₂ = ${this.formatNumber(x2)}. Keduanya memenuhi persamaan!`
+        description: 'Kesimpulan - Akar Pertama',
+        latex: `${variable} sub{1} = ${this.formatNumber(x1)}`,
+        explanation: `Akar pertama: ${variable}₁ = ${this.formatNumber(x1)}`
+      });
+      
+      steps.push({
+        description: 'Kesimpulan - Akar Kedua',
+        latex: `${variable} sub{2} = ${this.formatNumber(x2)}`,
+        explanation: `Akar kedua: ${variable}₂ = ${this.formatNumber(x2)}. Keduanya memenuhi persamaan!`
       });
       
       notes.push(`✅ ${variable}₁ = ${this.formatNumber(x1)}, ${variable}₂ = ${this.formatNumber(x2)}`);

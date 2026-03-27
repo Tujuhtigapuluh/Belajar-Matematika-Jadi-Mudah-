@@ -1,5 +1,5 @@
 // ==========================================
-// 🎨 LATEX-LIKE MATH RENDERER - CLEAN VERSION
+// 🎨 LATEX-LIKE MATH RENDERER - FIXED VERSION
 // ==========================================
 
 import React from 'react';
@@ -22,7 +22,9 @@ export const MathRenderer: React.FC<MathRendererProps> = ({
     xl: 'text-2xl'
   };
 
-  const elements = parseMathLatex(latex);
+  // Pre-process to handle backslash commands
+  const processedLatex = preprocessLatex(latex);
+  const elements = parseMathLatex(processedLatex);
 
   return (
     <span className={`inline-flex items-center flex-wrap gap-1 ${sizeClasses[size]} ${className}`}>
@@ -31,6 +33,25 @@ export const MathRenderer: React.FC<MathRendererProps> = ({
   );
 };
 
+// Pre-process LaTeX to normalize commands
+function preprocessLatex(latex: string): string {
+  return latex
+    .replace(/\\\\/g, '\\') // Handle escaped backslashes
+    .replace(/\\quad/g, ' QUAD ') // Replace \quad with marker
+    .replace(/\\text\{([^}]*)\}/g, ' TEXT{$1} ') // Replace \text{...} with marker
+    .replace(/\\cdot/g, '·')
+    .replace(/\\times/g, '×')
+    .replace(/\\div/g, '÷')
+    .replace(/\\pm/g, '±')
+    .replace(/\\neq/g, '≠')
+    .replace(/\\leq/g, '≤')
+    .replace(/\\geq/g, '≥')
+    .replace(/\\rightarrow/g, '→')
+    .replace(/\\leftarrow/g, '←')
+    .replace(/\\checkmark/g, '✓')
+    .trim();
+}
+
 function parseMathLatex(latex: string): React.ReactNode[] {
   const elements: React.ReactNode[] = [];
   let i = 0;
@@ -38,7 +59,33 @@ function parseMathLatex(latex: string): React.ReactNode[] {
   const getKey = () => `math-${key++}`;
 
   while (i < latex.length) {
-    // 1. Fraction
+    // Skip whitespace
+    if (latex[i] === ' ') {
+      elements.push(<span key={getKey()}>&nbsp;</span>);
+      i++;
+      continue;
+    }
+
+    // Handle QUAD marker (from \quad)
+    if (latex.slice(i, i + 6) === ' QUAD ') {
+      elements.push(<span key={getKey()} className="mx-6">&nbsp;</span>);
+      i += 6;
+      continue;
+    }
+
+    // Handle TEXT marker (from \text{...})
+    const textMatch = latex.slice(i).match(/^ TEXT\{([^}]*)\} /);
+    if (textMatch) {
+      elements.push(
+        <span key={getKey()} className="text-gray-300 font-normal mx-1">
+          {textMatch[1]}
+        </span>
+      );
+      i += textMatch[0].length;
+      continue;
+    }
+
+    // Fraction: frac{numerator}{denominator}
     if (latex.slice(i, i + 5) === 'frac{') {
       const { node, endIndex } = parseFraction(latex, i, getKey);
       elements.push(node);
@@ -46,7 +93,7 @@ function parseMathLatex(latex: string): React.ReactNode[] {
       continue;
     }
 
-    // 2. Square root
+    // Square root: sqrt{content}
     if (latex.slice(i, i + 5) === 'sqrt{') {
       const { node, endIndex } = parseSqrt(latex, i, getKey);
       elements.push(node);
@@ -54,7 +101,7 @@ function parseMathLatex(latex: string): React.ReactNode[] {
       continue;
     }
 
-    // 3. Superscript
+    // Superscript: sup{content}
     if (latex.slice(i, i + 4) === 'sup{') {
       i += 4;
       const { content, endIndex } = extractBraces(latex, i);
@@ -67,7 +114,7 @@ function parseMathLatex(latex: string): React.ReactNode[] {
       continue;
     }
 
-    // 4. Subscript
+    // Subscript: sub{content}
     if (latex.slice(i, i + 4) === 'sub{') {
       i += 4;
       const { content, endIndex } = extractBraces(latex, i);
@@ -80,17 +127,20 @@ function parseMathLatex(latex: string): React.ReactNode[] {
       continue;
     }
 
-    // 5. Checkmark
-    if (latex.slice(i, i + 2) === '✓' || latex.slice(i, i + 1) === '✓') {
+    // Special symbols
+    const symbolMatch = latex.slice(i).match(/^(π|∞|±|≠|≤|≥|→|←|↔|∈|∉|⊂|⊃|∪|∩|∅|ℝ|ℤ|ℕ|ℚ|α|β|γ|δ|θ|λ|μ|σ|φ|ω|Σ|Π|∫|∂|∇|√|✓|✗|·|×|÷)/);
+    if (symbolMatch) {
       elements.push(
-        <span key={getKey()} className="text-green-400 font-bold mx-1">✓</span>
+        <span key={getKey()} className="mx-0.5 text-purple-300">
+          {symbolMatch[1]}
+        </span>
       );
-      i += 1;
+      i += symbolMatch[1].length;
       continue;
     }
 
-    // 6. Operators
-    if (['+', '-', '=', '×', '÷', '→'].includes(latex[i])) {
+    // Operators
+    if (['+', '-', '=', '×', '÷'].includes(latex[i])) {
       elements.push(
         <span key={getKey()} className="mx-1 text-cyan-300">
           {latex[i]}
@@ -100,7 +150,7 @@ function parseMathLatex(latex: string): React.ReactNode[] {
       continue;
     }
 
-    // 7. Numbers
+    // Numbers (including decimals and negative)
     const numMatch = latex.slice(i).match(/^-?\d+\.?\d*/);
     if (numMatch) {
       elements.push(
@@ -112,8 +162,8 @@ function parseMathLatex(latex: string): React.ReactNode[] {
       continue;
     }
 
-    // 8. Variables (letters)
-    if (/[a-zA-Zπ]/.test(latex[i])) {
+    // Variables (letters)
+    if (/[a-zA-Z]/.test(latex[i])) {
       elements.push(
         <span key={getKey()} className="text-pink-300 italic font-serif">
           {latex[i]}
@@ -123,7 +173,7 @@ function parseMathLatex(latex: string): React.ReactNode[] {
       continue;
     }
 
-    // 9. Parentheses
+    // Parentheses
     if (latex[i] === '(' || latex[i] === ')') {
       elements.push(
         <span key={getKey()} className="text-gray-300 font-light">
@@ -134,14 +184,7 @@ function parseMathLatex(latex: string): React.ReactNode[] {
       continue;
     }
 
-    // 10. Whitespace
-    if (latex[i] === ' ') {
-      elements.push(<span key={getKey()}>&nbsp;</span>);
-      i++;
-      continue;
-    }
-
-    // Skip unknown
+    // Skip unknown characters
     i++;
   }
 
@@ -149,12 +192,14 @@ function parseMathLatex(latex: string): React.ReactNode[] {
 }
 
 function parseFraction(latex: string, startIndex: number, getKey: () => string) {
-  let i = startIndex + 5;
+  let i = startIndex + 5; // Skip 'frac{'
   const { content: num, endIndex: afterNum } = extractBraces(latex, i);
   i = afterNum;
   
+  // Skip to next {
   while (i < latex.length && latex[i] !== '{') i++;
-  i++;
+  if (i >= latex.length) return { node: <span key={getKey()}>frac error</span>, endIndex: i };
+  i++; // Skip {
   
   const { content: den, endIndex } = extractBraces(latex, i);
 
@@ -171,7 +216,7 @@ function parseFraction(latex: string, startIndex: number, getKey: () => string) 
 }
 
 function parseSqrt(latex: string, startIndex: number, getKey: () => string) {
-  let i = startIndex + 5;
+  let i = startIndex + 5; // Skip 'sqrt{'
   const { content, endIndex } = extractBraces(latex, i);
 
   return {
@@ -207,11 +252,14 @@ function extractBraces(latex: string, startIndex: number) {
 }
 
 function renderContent(content: string, getKey: () => string) {
+  // Check if content contains LaTeX commands
   if (content.includes('frac{') || content.includes('sqrt{') || 
-      content.includes('sup{') || content.includes('sub{')) {
+      content.includes('sup{') || content.includes('sub{') ||
+      content.includes(' QUAD ') || content.includes(' TEXT{')) {
     return <>{parseMathLatex(content)}</>;
   }
   
+  // Simple text rendering
   const elements: React.ReactNode[] = [];
   let buffer = '';
   
