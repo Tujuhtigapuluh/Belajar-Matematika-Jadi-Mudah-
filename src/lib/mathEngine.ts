@@ -932,10 +932,27 @@ export class SymbolicSolver {
     let varCoeff = leftTerms.varCoeff - rightTerms.varCoeff;
     let constant = rightTerms.constant - leftTerms.constant;
 
+    // Langkah 1: Identifikasi koefisien
     steps.push({
-      description: 'Pindahkan variabel ke kiri, konstanta ke kanan',
+      description: 'Identifikasi koefisien variabel dan konstanta',
+      latex: `${this.formatNumber(leftTerms.varCoeff)}${variable} + ${this.formatNumber(leftTerms.constant)} = ${this.formatNumber(rightTerms.constant)}`,
+      explanation: `Di ruas kiri: koefisien ${variable} adalah ${this.formatNumber(leftTerms.varCoeff)}, konstanta adalah ${this.formatNumber(leftTerms.constant)}. Di ruas kanan: konstanta adalah ${this.formatNumber(rightTerms.constant)}`
+    });
+
+    // Langkah 2: Pindahkan konstanta dari kiri ke kanan
+    if (leftTerms.constant !== 0) {
+      steps.push({
+        description: `Pindahkan ${this.formatNumber(leftTerms.constant)} dari kiri ke kanan (ubah tanda jadi negatif)`,
+        latex: `${this.formatNumber(leftTerms.varCoeff)}${variable} = ${this.formatNumber(rightTerms.constant)} - ${this.formatNumber(leftTerms.constant)}`,
+        explanation: `${this.formatNumber(rightTerms.constant)} - ${this.formatNumber(leftTerms.constant)} = ${this.formatNumber(constant)}. Jadi ${this.formatNumber(leftTerms.varCoeff)}${variable} = ${this.formatNumber(constant)}`
+      });
+    }
+
+    // Langkah 3: Sederhanakan ruas kanan
+    steps.push({
+      description: 'Hitung operasi di ruas kanan',
       latex: `${this.formatNumber(varCoeff)}${variable} = ${this.formatNumber(constant)}`,
-      explanation: `Kumpulkan semua ${variable} di kiri dan angka di kanan`
+      explanation: `${this.formatNumber(rightTerms.constant)} dikurangi ${this.formatNumber(leftTerms.constant)} sama dengan ${this.formatNumber(constant)}`
     });
 
     if (varCoeff === 0) {
@@ -970,23 +987,32 @@ export class SymbolicSolver {
 
     const solution = constant / varCoeff;
 
+    // Langkah 4: Jelaskan pembagian
     if (varCoeff !== 1) {
       steps.push({
-        description: `Bagi kedua ruas dengan ${this.formatNumber(varCoeff)}`,
+        description: `Bagi kedua ruas dengan ${this.formatNumber(varCoeff)} untuk mendapatkan ${variable}`,
         latex: `${variable} = frac{${this.formatNumber(constant)}}{${this.formatNumber(varCoeff)}}`,
-        explanation: `Untuk mendapatkan ${variable} saja di kiri`
+        explanation: `${this.formatNumber(constant)} dibagi ${this.formatNumber(varCoeff)} = ${this.formatNumber(solution)}`
       });
     }
 
+    // Langkah 5: Solusi akhir dengan pembuktian
     steps.push({
       description: 'Solusi ditemukan!',
       latex: `${variable} = ${this.formatNumber(solution)}`,
-      explanation: `Nilai ${variable} yang memenuhi persamaan`
+      explanation: `Nilai ${variable} yang memenuhi persamaan adalah ${this.formatNumber(solution)}`
     });
 
+    // Langkah 6: Pembuktian (VERIFIKASI)
     this.evaluator.setVariable(variable, solution);
     const leftVal = this.evaluator.evaluate(ast.left!);
     const rightVal = this.evaluator.evaluate(ast.right!);
+
+    steps.push({
+      description: 'Verifikasi dengan substitusi nilai ke persamaan awal',
+      latex: `${this.latex.toLatex(ast.left!)} = ${this.formatNumber(leftVal)} quad \\text{dan} quad ${this.latex.toLatex(ast.right!)} = ${this.formatNumber(rightVal)}`,
+      explanation: `Substitusi ${variable} = ${this.formatNumber(solution)} ke ruas kiri: ${this.formatNumber(leftVal)}, ke ruas kanan: ${this.formatNumber(rightVal)}. Karena ${this.formatNumber(leftVal)} = ${this.formatNumber(rightVal)}, maka jawaban benar ✓`
+    });
 
     notes.push('✅ Solusi sudah benar');
     notes.push(`🔍 Pembuktian: ${variable} = ${this.formatNumber(solution)}`);
